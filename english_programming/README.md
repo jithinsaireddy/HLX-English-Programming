@@ -1,134 +1,74 @@
-# English Programming: Human Language Virtual Machine
+# English Programming: Compiler, IR, NLVM, and HLX Backends
 
-> Program in plain English, no syntax required.
+This package contains the core compiler pipeline, intermediate representation (IR), the NLVM bytecode virtual machine, and HLX tooling for real‑time IoT/edge targets.
 
-English Programming is a revolutionary system that allows you to write programs in plain English rather than conventional programming syntax. This is the unified implementation that combines all the best features from various development phases into a powerful, scalable architecture based on compilation and virtual machine execution.
+## Technical Overview
 
-## Core Features
+### Front‑End and Semantic Normalization
 
-- **Natural Language Syntax**: Write code as if you were explaining it to a person
-- **Compiler/VM Architecture**: Programs are compiled to bytecode and executed by a virtual machine
-- **Variable Operations**: Create and manipulate variables
-- **Control Structures**: If/else conditions, while loops, and for-each loops
-- **Functions**: Define functions with parameters and return values
-- **File Operations**: Read from and write to files
-- **API Integration**: Call external APIs like weather services
-- **Multiple Interfaces**: Command-line and web interfaces
+- Deterministic parsing of controlled English with optional NLP aids (spaCy)
+- Entity resolution, type inference under constraints, and effect tracking
+- Normalization to a typed IR with explicit control/data flow
 
-## Getting Started
+### Intermediate Representation (IR)
 
-### Running an English Program
+- Structured control flow (blocks, branches, joins)
+- Side‑effect boundaries (I/O, network, filesystem) carried as capabilities
+- Lowerable to: (a) NLVM bytecode, (b) HLX generators
+
+### NLVM Execution Model
+
+- Register‑like bytecode with deterministic evaluation
+- Sandboxed runtime with capability‑gated I/O
+- Tracing hooks for test runners and step‑through debugging
+
+### Binary Code Conversion via HLX
+
+- HLX specifications generate target artifacts:
+  - Rust/FreeRTOS task skeletons for MCU binaries (compiled downstream)
+  - Edge container manifests for gateway deployment
+  - W3C WoT Thing Descriptions for interoperability
+
+## Real‑Time and Streaming
+
+- Event‑time vs processing‑time semantics, windowing, and rate controls
+- MQTT/CoAP connectors in `hlx.edge_module` for telemetry and command/control
+- Safety envelopes: bounds checks, watchdogs, and fail‑safe transitions
+
+## Developer Workflow
+
+Compile and execute an English program:
 
 ```bash
-# Compile and run a program
-python english_programming.py examples/basic_operations.nl
-
-# Or use the interactive launcher
-python english_programming.py
+python ../../integrated_test_runner.py ../examples/basic_operations.nl
 ```
 
-### Example Programs
+Generate HLX artifacts and simulate:
 
-Several example programs are included in the `examples/` directory:
-
-- `basic_operations.nl`: Demonstrates variables, printing, and loops
-- `api_integration.nl`: Shows how to call external APIs
-
-## Language Guide
-
-### Creating Variables
-
-```
-Create a variable called name and set it to John
-Create a variable called age and set it to 30
-Create a variable called is_active and set it to true
+```bash
+python -m english_programming.hlx.cli ../examples/boiler_a.hlx --out ../../hlx_out
+python -m english_programming.hlx.run_demo ../examples/boiler_a.hlx
 ```
 
-### Basic Operations
+Run an MQTT‑backed edge module (optional broker):
 
-```
-Add x and y and store the result in sum
-```
-
-### Control Structures
-
-```
-If age is greater than 18:
-    Print You are an adult
+```bash
+python -m english_programming.hlx.edge_module --spec ../examples/boiler_a.hlx --endpoint mqtt://localhost
 ```
 
-```
-While count is less than 5:
-    Add 1 to count
-    Print count
-```
+## Extensibility
 
-### Functions
+- Extension APIs under `src/extensions` for HTTP, files, and custom domains
+- Add IR passes for optimization or static analysis
+- Add HLX verbs for domain‑specific actions (publish/subscribe/actuate)
 
-```
-Define a function called greet with inputs name:
-    Create a variable called message and set it to Hello
-    Add message and name and store the result in full_message
-    Print full_message
-    Return full_message
+## References
 
-Call greet with values John and store result in greeting
-```
+- See root `README.md` for a system overview and use cases
+- See `english_programming/hlx/README.md` for HLX grammar and safety model
 
-### File Operations
+## License and Governance
 
-```
-Read file data.txt and store lines in content
-Write Hello World to file output.txt
-```
-
-### API Integration
-
-```
-Call OpenWeather API with city as London and store temperature in temp
-Print temp
-```
-
-## System Architecture
-
-The English Programming system is built on a two-stage execution model:
-
-1. **Compilation Stage**: The natural language compiler (`enhanced_nl_compiler.py`) translates English code into bytecode instructions.
-
-2. **Execution Stage**: The virtual machine (`enhanced_nlvm.py`) executes the bytecode to produce results.
-
-This design mirrors how traditional programming languages work (like Java's JVM or Python's interpreter), providing a solid foundation for future enhancements and optimizations.
-
-## Project Structure
-
-```
-english_programming/
-├── src/
-│   ├── compiler/        # English to bytecode compiler
-│   ├── vm/              # Virtual machine for bytecode execution
-│   ├── interfaces/      # CLI and web interfaces
-│   └── extensions/      # API and file integration capabilities
-├── examples/            # Sample English programs
-├── docs/                # Documentation
-└── tools/               # Development and demo tools
-```
-
-## Future Directions
-
-- **Optimization**: Improving bytecode efficiency
-- **Language Support**: Extending to other natural languages
-- **IDE Integration**: Building plugins for popular code editors
-- **Enhanced Error Messages**: Providing more helpful feedback
-- **Advanced Libraries**: Adding domain-specific capabilities
-
-## Contributing
-
-We welcome contributions to enhance and expand the English Programming system! See our contributing guidelines for more details.
-
-## License
-
-This project is open source and available under the MIT License.
-
----
-
-*English Programming: Making coding accessible to everyone*
+- MIT License (root `LICENSE`)
+- Contributing: `CONTRIBUTING.md`
+- Code of Conduct: `CODE_OF_CONDUCT.md`

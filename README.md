@@ -1,201 +1,92 @@
-# English Programming Language
+# HLX-English-Programming
 
-An innovative programming language that allows you to write code in natural English.
+English Programming is a research-grade system that compiles controlled English into executable artifacts across edge, cloud, and embedded targets. The stack includes a natural-language front‑end, an intermediate representation (IR), a bytecode virtual machine (NLVM), and HLX, a domain-specific controlled-English layer for real‑time IoT and cyber‑physical systems. In short: write intentions in English, obtain verified, runnable code and artifacts.
 
-## Overview
+## Vision and Scope
 
-English Programming translates English natural language into executable code. This project consists of two main components:
+- Express complex programs in precise English while preserving formal semantics.
+- Compile to multiple targets: NLVM bytecode for rapid execution, Rust/FreeRTOS scaffolds for embedded MCUs, edge container manifests for gateways, and interoperable W3C WoT Thing Descriptions.
+- Integrate real-time data streams, stateful policies, and safety envelopes for industrial, healthcare, and smart‑city deployments.
 
-1. **Compiler**: Converts English text into bytecode instructions
-2. **Virtual Machine (VM)**: Executes the bytecode instructions
-
-## Architecture
-
-The system pipeline works as follows:
+## End‑to‑End Architecture
 
 ```
-English Text → NLP Compiler → Bytecode → NLVM → Program Execution
+English spec → Parsing + Semantic Normalization → IR →
+  (a) Bytecode → NLVM execution
+  (b) HLX backends → Rust/FreeRTOS, Edge manifests, WoT TD → downstream binary builds
 ```
 
-### Key Components
+- **English Front‑End**: Deterministic parser with optional NLP assistance (spaCy) to normalize English into a typed, explicit IR with disambiguation and constraints.
+- **IR**: A compact, SSA‑like instruction set tailored for control flow, data flow, and side‑effect boundaries.
+- **Bytecode + NLVM**: The IR lowers to bytecode executed by NLVM, providing deterministic evaluation, sandboxed I/O, and introspection for debugging/testing.
+- **Binary Code Conversion (via HLX toolchain)**: HLX specifications generate Rust/FreeRTOS skeletons and edge manifests that are compiled downstream to machine binaries and deployable images. This bridges natural language to hardware‑level executables without sacrificing verifiability.
 
-- **Improved NLP Compiler**: Uses NLP (Natural Language Processing) with spaCy to understand and translate English sentences into bytecode instructions
-- **Improved NLVM**: A virtual machine that executes the bytecode instructions
+## HLX: Controlled‑English for Real‑Time IoT/Edge
 
-## Features
+HLX models sensors, actuators, timing constraints, and policies in strict English with a well‑defined grammar.
 
-English Programming supports a wide range of programming features:
+- Outputs:
+  - `hlx_out/rtos.rs`: Rust/FreeRTOS skeleton for MCU tasks, timers, and ISR-safe queues
+  - `hlx_out/edge_manifest.json`: Edge module/container manifest for gateway deployment
+  - `hlx_out/thing_description.json`: W3C WoT Thing Description for interoperability
+- Runtime integrations:
+  - Local simulation and policy testing
+  - MQTT/CoAP connectors for real‑time telemetry and command/control
+  - Deterministic scheduling hints and rate‑monotonic patterns for control loops
 
-- **Variables**: Create and manipulate variables with different data types
-- **Arithmetic**: Perform basic arithmetic operations (addition, etc.)
-- **Strings**: Create and manipulate text with string concatenation
-- **Data Structures**: Use lists and dictionaries
-- **Functions**: Define functions with parameters and return values
-- **Conditional Logic**: Use if/else statements for decision making
-- **Built-in Functions**: Access built-in utilities like length and sum
+See the dedicated HLX README under `english_programming/hlx/README.md` for grammar, timing, and safety details.
 
-## Usage
+## Real‑Time Data and Streaming
 
-### Running a Program
+- Ingestion: MQTT/CoAP/Web sockets to NLVM or HLX edge modules
+- Semantics: event‑time vs processing‑time distinction, windowing, and stateful policies in English
+- Safety: bounds checks, rate limits, dead‑man switches, and fail‑safe modes expressed in controlled English
+- Observability: structured logs, execution traces, and testable scenarios from natural language specifications
 
-```bash
-# Compile an English program to bytecode
-python english_programming/src/compiler/improved_nlp_compiler_fixed.py your_program.nl
+## Representative Use Cases
 
-# Execute the compiled bytecode
-python english_programming/src/vm/improved_nlvm_fixed.py your_program.nlc
-```
-
-### Using the Integrated Test Runner
-
-The integrated test runner handles both compilation and execution:
-
-```bash
-python integrated_test_runner.py your_program.nl
-```
-
-## Example Programs
-
-### Basic Variables and Arithmetic
-
-```
-create a variable called x and set it to 10
-create a variable called y and set it to 5
-add x and y and store the result in sum
-print sum
-```
-
-### Strings and Concatenation
-
-```
-create a variable called first_name and set it to "John"
-create a variable called last_name and set it to "Doe"
-concatenate first_name and last_name and store it in full_name
-print full_name
-```
-
-### Functions
-
-```
-define a function called add_numbers with inputs a and b:
-    add a and b and store the result in sum
-    return sum
-
-call add_numbers with values 7 and 3 and store result in function_result
-print function_result
-```
-
-### Conditional Logic
-
-```
-create a variable called age and set it to 25
-if age is greater than 18:
-    set status to "Adult"
-else:
-    set status to "Minor"
-print status
-```
-
-## Releases
-
-See CHANGELOG.md and docs/ (when present) for release notes and examples.
-
-## Extensions and Future Work
-
-The English Programming language can be extended with:
-
-1. **Loops**: For repetitive tasks
-2. **More Data Structures**: Arrays, sets, etc.
-3. **Error Handling**: Try/catch mechanisms
-4. **Object-Oriented Features**: Classes and objects
-5. **Module System**: Import code from other files
-
-## Dependencies
-
-- Python 3.6+
-- spaCy (with en_core_web_sm model)
+- Industrial automation (process control, predictive maintenance)
+- Healthcare monitoring (alarm policies, privacy‑aware streaming)
+- Smart cities (traffic policies, energy optimization, incident response)
+- Robotics and drones (mission plans, safety corridors)
+- Finance and ops (natural‑language runbooks with auditable execution)
 
 ## Quick Start
 
-- Create and activate a virtualenv:
+Run an English program end‑to‑end (compile → execute):
+
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+python integrated_test_runner.py english_programming/examples/basic_operations.nl
 ```
 
-- Install (with optional NLP extras):
+Generate HLX artifacts and run a demo:
+
 ```bash
-pip install -e .[nlp]
+python -m english_programming.hlx.cli english_programming/examples/boiler_a.hlx --out hlx_out
+python -m english_programming.hlx.run_demo english_programming/examples/boiler_a.hlx
 ```
 
-- Run an English program:
+Optional MQTT edge module (if broker available):
+
 ```bash
-english path/to/your_program.nl
+python -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://localhost
 ```
 
-- Launch CLI:
-```bash
-python english_programming/src/interfaces/cli/cli_app.py
-```
+## Repository Map
 
-- Launch Web UI:
-```bash
-python english_programming/src/interfaces/web/web_app.py
-```
+- `english_programming/src`: compiler, NLVM, interfaces, and extensions
+- `english_programming/hlx`: HLX grammar, CLI, edge module, and generators
+- `english_programming/examples`: example `.nl` and `.hlx` programs
+- `hlx_out/`: generated outputs (ignored by VCS)
+- `ui/english-ui`: experimental React/TypeScript UI
 
-## Standard Library
-- Strings: STRUPPER/STRLOWER/STRTRIM via natural phrases (e.g., "make the name uppercase and store it in upper_name").
-- HTTP: "http get from URL and store result in page".
-- Files: write/read/append using natural phrasing.
+## Open Source and Governance
 
-See `english_programming/examples/stdlib_demo.nl`.
+- License: MIT (see `LICENSE`)
+- Contributing: see `CONTRIBUTING.md`
+- Code of Conduct: see `CODE_OF_CONDUCT.md`
+- Security: see `SECURITY.md` for vulnerability reporting
 
-## NLP Enhancements
-## Tutorials (Start Here)
+## Citation
 
-1) Hello, Variables and Math
-```
-create a variable called x and set it to 2
-create a variable called y and set it to 3
-add x and y and store the result in sum
-print sum
-```
-
-2) Strings and HTTP
-```
-create a variable called name and set it to " world "
-trim name and store it in cleaned
-make the cleaned uppercase and store it in shout
-print shout
-http get from "https://example.com" and store result in page
-get the length of page and store it in size
-print size
-```
-
-3) JSON and Regex
-```
-create a variable called js and set it to "{\"name\":\"Alice\"}"
-parse json js and store result in obj
-get json obj key "name" and store result in nm
-check if nm matches \\w+ and store result in ok
-print ok
-```
-
-4) OOP
-```
-CLASS_START Person Object
-METHOD_START constructor name
-SET_PROPERTY self name name
-ENDMETHOD
-METHOD_START greet
-GET_PROPERTY self name who
-RETURN who
-ENDMETHOD
-CLASS_END
-CREATE_OBJECT Person john "Alice"
-CALL_METHODR john greet out
-print out
-```
-
-See `english_programming/examples` for more.
-If spaCy is installed (`pip install -e .[nlp]`), parsing becomes more forgiving and expressive. The CLI auto-detects spaCy and enables NLP by default; disable via `--no-nlp`.
-# HLX-English-Programming
+If you use this project in academic work, please cite it as “HLX‑English‑Programming (2025)”.
