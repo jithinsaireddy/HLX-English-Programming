@@ -15,15 +15,24 @@ src_dir = current_dir / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-# First check if spaCy is installed
+# Require spaCy with English model
 try:
-    import spacy
+    import spacy  # noqa: F401
+    _NLP = None
+    try:
+        _NLP = spacy.load('en_core_web_sm')
+    except Exception:
+        # Try to download automatically once
+        import subprocess
+        subprocess.run([sys.executable, '-m', 'spacy', 'download', 'en_core_web_sm'], check=True)
+        import spacy as _sp2
+        _NLP = _sp2.load('en_core_web_sm')
     has_spacy = True
-except ImportError:
-    has_spacy = False
-    print("Warning: spaCy not found. Running without NLP enhancements.")
-    print("To install spaCy: pip install spacy")
-    print("Then download the English model: python -m spacy download en_core_web_sm")
+except Exception as e:
+    print("Error: spaCy with model 'en_core_web_sm' is required.")
+    print("Install with: pip install spacy && python -m spacy download en_core_web_sm")
+    print(f"Details: {e}")
+    sys.exit(2)
 
 # Import compiler and VM components
 from compiler.improved_nlp_compiler import ImprovedNLPCompiler
@@ -53,7 +62,8 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--compile-only', action='store_true', help='Only compile, do not execute')
     parser.add_argument('--output', '-o', help='Specify output file for compiled bytecode')
-    parser.add_argument('--no-nlp', action='store_true', help='Disable NLP enhancements')
+    # NLP is mandatory; keep flag for compatibility but ignore
+    parser.add_argument('--no-nlp', action='store_true', help='(Deprecated) NLP is mandatory and always enabled')
     parser.add_argument('--text', action='store_true', help='Use legacy text IR instead of NLBC binary')
     parser.add_argument('--disassemble', action='store_true', help='Disassemble an NLBC file and exit')
     args = parser.parse_args()
@@ -75,11 +85,7 @@ def main():
     print(f"===== English Programming System =====")
     
     # Initialize appropriate compiler based on availability and user preference
-    use_nlp = not args.no_nlp
-    if use_nlp:
-        print("NLP: ON (spaCy enhancements enabled if installed)")
-    else:
-        print("NLP: OFF (regex-only parsing)")
+    print("NLP: ON (spaCy mandatory; using en_core_web_sm)")
     compiler = ImprovedNLPCompiler()
     
     # Initialize VM

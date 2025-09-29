@@ -73,6 +73,17 @@ Optional MQTT edge module (if broker available):
 python -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://localhost
 ```
 
+## spaCy Integration (Mandatory)
+
+- We require spaCy with the `en_core_web_sm` model for robust normalization and synonym handling across EPL and HLX.
+- Install:
+  ```bash
+  pip install -r requirements.txt
+  make nlp-model
+  ```
+- The compiler automatically loads the model and will attempt a one‑time download if missing.
+- Benefits: better intent normalization, resilient parsing of complex, nested conditions, and improved HLX rule matching without added runtime cost.
+
 ## Repository Map
 
 - `english_programming/src`: compiler, NLVM, interfaces, and extensions
@@ -93,6 +104,18 @@ python -m english_programming.hlx.edge_module --spec english_programming/example
 - Contributing: see `CONTRIBUTING.md`
 - Code of Conduct: see `CODE_OF_CONDUCT.md`
 - Security: see `SECURITY.md` for vulnerability reporting
+
+## Related Work and Positioning
+
+- Inform 7: English‑like interactive fiction compiling to VM bytecode. Our scope extends to general computation and real‑time IoT with multi‑target codegen.
+- Attempto/Gherkin: controlled English for specs/tests. We compile to executable NLBC and HLX deployables.
+- LLM codegen: probabilistic; no stable bytecode/VM contract. We are a deterministic compiler with NLBC and NLVM.
+
+See `docs/RELATED_WORK.md` for a deeper comparison.
+
+## HLX Boards
+
+See `english_programming/hlx/README_boards.md` for wiring `hlx_out/rtos.rs` into a board HAL to produce native MCU firmware.
 
 ## Citation
 

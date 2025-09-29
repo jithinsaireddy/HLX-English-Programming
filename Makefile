@@ -2,6 +2,9 @@ SHELL := /bin/bash
 
 .PHONY: dev backend frontend prod down
 
+nlp-model:
+	python -m spacy download en_core_web_sm
+
 dev:
 	bash run_dev.sh
 

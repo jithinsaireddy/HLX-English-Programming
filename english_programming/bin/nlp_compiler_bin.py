@@ -2,31 +2,30 @@ import re
 import logging
 from english_programming.bin.nlbc_encoder import write_module_with_funcs, write_module, CT_INT, CT_STR
 
-# Optional spaCy normalization for flexible English
+# Mandatory spaCy normalization for flexible English
 _NLP = None
 _NLP_LOADED = False
 def _load_spacy():
     global _NLP
     if _NLP is not None:
         return _NLP
+    import spacy
     try:
-        import spacy
-        try:
-            _NLP = spacy.load('en_core_web_sm')
-            logging.getLogger('epl_bin').info('spaCy loaded: en_core_web_sm')
-        except Exception:
-            _NLP = spacy.blank('en')
-            logging.getLogger('epl_bin').info('spaCy fallback: blank("en")')
-        globals()['_NLP_LOADED'] = True
+        _NLP = spacy.load('en_core_web_sm')
+        logging.getLogger('epl_bin').info('spaCy loaded: en_core_web_sm')
     except Exception:
-        _NLP = None
-        logging.getLogger('epl_bin').warning('spaCy unavailable; using regex only')
+        import sys, subprocess
+        subprocess.run([sys.executable, '-m', 'spacy', 'download', 'en_core_web_sm'], check=True)
+        import spacy as _sp2
+        _NLP = _sp2.load('en_core_web_sm')
+        logging.getLogger('epl_bin').info('spaCy downloaded and loaded: en_core_web_sm')
+    globals()['_NLP_LOADED'] = True
     return _NLP
 
 def _normalize_text_with_spacy(s: str) -> str:
     nlp = _load_spacy()
     if not nlp:
-        return s.lower()
+        raise RuntimeError('spaCy not loaded')
     doc = nlp(s)
     lemmas = ' '.join(t.lemma_.lower() or t.text.lower() for t in doc)
     if logging.getLogger('epl_bin').isEnabledFor(logging.DEBUG):
