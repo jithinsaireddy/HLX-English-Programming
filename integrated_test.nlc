@@ -1,0 +1,29 @@
+SET x 10
+SET y 20
+ADD x y sum
+PRINT sum
+PRINT length
+PRINT total
+PRINT third_item
+PRINT username
+SET greeting "hello, "
+SET name "world"
+PRINT full_greeting
+FUNC add_numbers 2 a b
+ADD a b sum_result
+PRINT sum_result
+RETURN sum_result
+END
+CALL add_numbers 2 15 25 function_result
+PRINT function_result
+SET age 25
+IF age > 18
+PRINTSTR adult
+IF age > 21
+PRINTSTR can also purchase alcohol
+END
+END
+ELSE
+PRINTSTR minor
+END
+END

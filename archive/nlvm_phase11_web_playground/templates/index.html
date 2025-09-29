@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>English Programming Playground</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+        .sidebar {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .example-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .example-btn:hover {
+            background-color: #2980b9;
+        }
+        .code-area {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .run-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .run-btn:hover {
+            background-color: #219653;
+        }
+        .output-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #eee;
+            cursor: pointer;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+        .tab.active {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #3498db;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🧠 English Programming Playground</h1>
+        <p>Write code in natural English and see it run with our NLP-enhanced system</p>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h3>Examples</h3>
+            <button class="example-btn" onclick="loadExample('variables')">Variables</button>
+            <button class="example-btn" onclick="loadExample('arithmetic')">Arithmetic</button>
+            <button class="example-btn" onclick="loadExample('strings')">String Operations</button>
+            <button class="example-btn" onclick="loadExample('counters')">Counter Operations</button>
+            <button class="example-btn" onclick="loadExample('conditional')">Conditionals</button>
+            <button class="example-btn" onclick="loadExample('file_ops')">File Operations</button>
+            <button class="example-btn" onclick="loadExample('api')">API Call</button>
+            
+            <h3>Quick Reference</h3>
+            <ul>
+                <li><strong>Variables:</strong> Set x to 5</li>
+                <li><strong>Math:</strong> Add x and y to create sum</li>
+                <li><strong>Strings:</strong> Concatenate greeting and name to make message</li>
+                <li><strong>Counters:</strong> Increment counter by 2</li>
+                <li><strong>Print:</strong> Print 'Hello, World'</li>
+                <li><strong>If:</strong> If age is greater than 18: ...</li>
+                <li><strong>Files:</strong> Read file.txt and store in data</li>
+                <li><strong>API:</strong> Get weather for city</li>
+            </ul>
+        </div>
+        
+        <div class="code-area">
+            <form method="post">
+                <textarea name="code" id="code-editor" placeholder="Type your English code here...">{{ request.form['code'] if request.method == 'POST' else '' }}</textarea>
+                <button type="submit" class="run-btn">▶️ Run Code</button>
+            </form>
+            
+            {% if output %}
+            <div class="output-section">
+                <h3>Results</h3>
+                <div class="tabs">
+                    <div class="tab active" onclick="showTab('execution')">Program Output</div>
+                    <div class="tab" onclick="showTab('bytecode')">Bytecode</div>
+                    <div class="tab" onclick="showTab('full_output')">Raw Output</div>
+                </div>
+                
+                <div id="execution" class="tab-content active">
+                    <pre>{{ output }}</pre>
+                </div>
+                
+                <div id="bytecode" class="tab-content">
+                    <pre>{{ bytecode if bytecode else 'Bytecode not available' }}</pre>
+                </div>
+                
+                <div id="full_output" class="tab-content">
+                    <pre>{{ full_output if full_output else 'Raw output not available' }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Example code snippets
+        const examples = {
+            variables: "Create a variable x and set it to 42\nCreate a variable total with value 100\nPrint x\nPrint total",
+            arithmetic: "Set number1 to 10\nSet number2 to 5\nAdd number1 and number2 to create sum_result\nMultiply number1 by number2 to get product_result\nSubtract number2 from number1 to find difference\nDivide number1 by number2 to calculate quotient\nPrint sum_result\nPrint product_result\nPrint difference\nPrint quotient",
+            strings: "Set name to 'John Doe'\nSet greeting to 'Hello, '\nConcatenate greeting and name to make full_greeting\nPrint full_greeting\nSet message to 'The value is: ' + x\nPrint message\nPrint 'This is a direct string literal'",
+            counters: "Create a counter with initial value 1\nPrint counter\nIncrement counter by 2\nPrint counter\nAdd 3 to counter\nPrint counter\nIncrement the counter\nPrint counter",
+            conditional: "Set age to 21\nIf age is greater than 18:\n    Print 'You are an adult'\nElse:\n    Print 'You are a minor'\nEnd if",
+            file_ops: "Set content to 'Hello, World!'\nWrite content to file hello.txt\nRead hello.txt and store in result\nPrint result",
+            api: "Set city to 'San Francisco'\nGet weather for city and store in weather_data\nPrint 'Weather in:'\nPrint city\nPrint weather_data"
+        };
+        
+        // Load an example into the editor
+        function loadExample(type) {
+            document.getElementById('code-editor').value = examples[type];
+        }
+        
+        // Tab switching
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show the selected tab
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+        }
+    </script>
+</body>
+</html>

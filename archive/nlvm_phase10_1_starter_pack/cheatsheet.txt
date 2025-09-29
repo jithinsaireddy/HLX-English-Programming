@@ -1,0 +1,21 @@
+🧠 NLVM Cheatsheet
+
+✅ Set Variables:
+- Set x to 5
+- Create a variable called name and set it to "Alice"
+
+✅ Add Values:
+- Add x and y and store the result in total
+- Add price and tax, and store outcome in final_amount
+
+✅ Print:
+- Print total
+- Show me final_amount
+- Display message
+
+✅ File I/O:
+- Read file input.txt and store lines in data
+- Write Done to file result.txt
+
+✅ API:
+- Call OpenWeather API with city as Paris and store temperature in temp

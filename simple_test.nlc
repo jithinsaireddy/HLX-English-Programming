@@ -1,0 +1,10 @@
+LIST numbers 1 2 3 4 5
+BUILTIN LENGTH numbers length
+PRINT length
+SET greeting "hello, "
+SET name "world"
+CONCAT greeting name full_greeting
+PRINT full_greeting
+DICT user name:alice,age:30
+GET user name username
+PRINT username

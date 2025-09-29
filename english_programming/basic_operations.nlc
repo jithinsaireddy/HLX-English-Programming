@@ -1,0 +1,9 @@
+SET count 0
+SET max 5
+SET message hello world
+WHILE count < max
+ADD 1 count count
+PRINT count
+PRINT message
+END
+PRINTSTR done

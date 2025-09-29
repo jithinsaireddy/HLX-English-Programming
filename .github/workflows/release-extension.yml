@@ -1,0 +1,21 @@
+name: Build VS Code Extension
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive VS Code extension folder
+        run: |
+          cd nlvm_phase11_vscode_extension
+          zip -r ../english-programming-vscode.zip .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-programming-vscode
+          path: english-programming-vscode.zip
+
+
+

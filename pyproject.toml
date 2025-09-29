@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "english-programming"
+version = "0.1.0"
+description = "English Programming: Natural-language to bytecode + VM"
+authors = [{name = "English Programming"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "Flask>=3.0.0",
+  "flask-cors>=4.0.0",
+]
+
+[project.optional-dependencies]
+nlp = [
+  "spacy>=3.7.0",
+]
+jit = [
+  "llvmlite>=0.41",
+  "cffi>=1.16.0",
+]
+iot = [
+  "paho-mqtt>=1.6.1",
+]
+
+[project.scripts]
+english = "english_programming.run_english:main"
+english-format = "english_programming.src.tools.formatter:main"
+english-lint = "english_programming.src.tools.lint_cli:main"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["english_programming*"]
+exclude = ["tests*", "archive*", "test_output*"]

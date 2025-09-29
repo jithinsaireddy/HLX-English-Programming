@@ -1,0 +1,1 @@
+{"scopeName":"source.nlvm","patterns":[{"match":"\\b(FUNC_DEF|END_FUNC|CALL|RETURN|IF|ELSE|END_IF|REPEAT|END_REPEAT|SET|LIST|DICT|ADD|CONCAT|BUILTIN|INDEX|GET|READ|WRITE|API|PRINT)\\b","name":"keyword.control.nlvm"}]}

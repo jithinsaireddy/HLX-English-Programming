@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "English Programming",
+  "patterns": [
+    {"name": "comment.line.number-sign.english", "match": "#.*$"},
+    {"name": "string.quoted.double.english", "match": "\"[^\"]*\""},
+    {"name": "keyword.control.english", "match": "\\b(if|else|define a function|call|return|create a variable|set|add|concatenate|print|http get|http post|parse json|stringify json|get json|make|trim|import module)\\b"}
+  ],
+  "scopeName": "source.english"
+}

@@ -1,0 +1,29 @@
+SET age 15
+SET voting_age 18
+SET retirement_age 65
+IF age < voting_age
+PRINTSTR You are too young to vote
+SET years_until_voting 0
+ADD voting_age -1 modified_voting_age
+ADD modified_voting_age -1 neg_age
+ADD voting_age -1 difference
+PRINT difference
+IF age > voting_age and age < retirement_age
+PRINTSTR You are of working age
+IF age > retirement_age
+PRINTSTR You are of retirement age
+SET score 85
+SET result "undefined"
+IF score > 90
+SET result "A"
+ELSEIF score > 80
+SET result "B"
+ELSEIF score > 70
+SET result "C"
+ELSE
+SET result "F"
+PRINT result
+END
+END
+END
+END

@@ -1,0 +1,31 @@
+SET it 10
+SET it 20
+ADD y result sum
+PRINT sum
+LIST numbers 1 2 3 4 5
+BUILTIN LENGTH numbers length
+BUILTIN SUM numbers total
+INDEX numbers 2 third_item
+PRINT length
+PRINT total
+PRINT third_item
+DICT user name:alice,age:30
+GET user name username
+PRINT username
+SET it "Hello, "
+SET it "World"
+CONCAT greeting name full_greeting
+PRINT full_greeting
+FUNC_DEF add_numbers a b
+ADD b result sum_result
+PRINT sum_result
+RETURN sum_result
+CALL add_numbers 15 25 function_result
+PRINT function_result
+SET it 25
+IF age > 18
+PRINTSTR Adult
+IF age > 21
+PRINTSTR Can also purchase alcohol
+ELSE
+PRINTSTR Minor

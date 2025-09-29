@@ -1,0 +1,24 @@
+WHILE_START counter is less than 5
+BLOCK_START
+FOR_EACH_START item numbers
+BLOCK_START
+FOR_RANGE_START i 1 5
+BLOCK_START
+ELSE_END
+ELSE_IF score is greater than 80
+BLOCK_START
+ELSE_END
+ELSE_IF score is greater than 70
+BLOCK_START
+METHOD_START greet
+BLOCK_START
+GET_PROPERTY self name
+METHOD_START have_birthday
+BLOCK_START
+GET_PROPERTY self age
+CREATE_OBJECT Person john "John Doe" 30
+GET_PROPERTY john age
+METHOD_START study
+BLOCK_START
+GET_PROPERTY self major
+CREATE_OBJECT Student mary "Mary Smith" 22 and "Computer Science"

@@ -1,0 +1,57 @@
+PRINTSTR --- part 1: basic variables and arithmetic ---
+SET count 5
+SET message "hello from english programming!"
+PRINTSTR count:
+PRINT count
+PRINTSTR message:
+PRINT message
+ADD 10 count count
+PRINTSTR count after adding 10:
+PRINT count
+PRINTSTR --- part 2: control flow with conditionals ---
+SET score 85
+PRINTSTR score:
+PRINT score
+PRINTSTR grade:
+IF score > 90
+PRINTSTR a
+END
+ELSEIF score > 80
+PRINTSTR b
+END
+ELSEIF score > 70
+PRINTSTR c
+END
+ELSE
+PRINTSTR f
+END
+PRINTSTR --- part 3: loops ---
+SET counter 1
+SET max 5
+PRINTSTR counting from 1 to 5:
+WHILE counter <= max
+PRINT counter
+ADD 1 counter counter
+END
+PRINTSTR --- part 4: file operations ---
+SET filename "demo_data.txt"
+SET content "this is a test file created by the english programming system.
+it demonstrates file i/o capabilities."
+WRITEFILE content filename
+PRINTSTR file created successfully.
+READFILE filename file_data
+PRINTSTR file contents:
+PRINT file_data
+DELETEFILE filename
+PRINTSTR file deleted.
+PRINTSTR --- part 5: api integration ---
+SET city san_francisco
+APICALL WEATHER city weather_data
+PRINTSTR weather for san francisco:
+PRINT weather_data
+SET city2 new_york
+APICALL WEATHER city2 weather_data2
+PRINTSTR weather for new york:
+PRINT weather_data2
+PRINTSTR --- end of combined demo ---
+PRINTSTR --- end of combined demo ---

@@ -1,0 +1,1 @@
+{"scopeName":"source.nlvm","patterns":[{"match":"\\b(set|create|add|print|read|write|call|repeat|if|else)\\b","name":"keyword.control.nlvm"}]}

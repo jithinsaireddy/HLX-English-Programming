@@ -1,0 +1,10 @@
+SET test_filename "test_output.txt"
+SET test_content "hello, this is a test file!"
+WRITEFILE test_content test_filename
+PRINTSTR file has been created.
+READFILE test_filename file_content
+PRINTSTR file contents:
+PRINT file_content
+DELETEFILE test_filename
+PRINTSTR file has been deleted.
+PRINTSTR file has been deleted.

@@ -1,0 +1,15 @@
+{
+  "scopeName": "source.nlvm",
+  "patterns": [
+    {
+      "match": "\b(create|set|add|store|print|show|display|write|read|call)\b",
+      "name": "keyword.control.nlvm"
+    },
+    {
+      "match": "\b(variable|file|result|total|temperature)\b",
+      "name": "variable.other.nlvm"
+    }
+  ],
+  "repository": {},
+  "name": "nlvm"
+}

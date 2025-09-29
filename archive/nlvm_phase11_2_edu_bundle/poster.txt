@@ -1,0 +1,18 @@
+🧠 NLVM: CODE IN ENGLISH
+
+✅ Set a variable
+   "Set x to 5"
+
+✅ Add numbers
+   "Add x and 10 and store the result in total"
+
+✅ Print output
+   "Print total"
+
+✅ Write to a file
+   "Write Hello to file output.txt"
+
+✅ Read from a file
+   "Read file notes.txt and store lines in data"
+
+🎯 No syntax. No rules. Just English.

@@ -1,0 +1,10 @@
+Device "Boiler-A" at mqtt://plant/boilerA
+Sensor "pressure" unit kPa period 200 ms
+Actuator "relief_valve" actions open, close
+
+If pressure > 180 kPa for 2000 ms then
+  open relief_valve
+  publish event "overpressure" with timestamp and value
+  store last 10000 ms of pressure to table "incidents"
+
+

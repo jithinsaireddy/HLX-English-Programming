@@ -1,0 +1,21 @@
+SET filename "test_data.txt"
+SET content "This is a test file created by the English Programming system."
+WRITEFILE content filename
+PRINTSTR File created successfully.
+READFILE filename file_data
+PRINTSTR File contents:
+PRINT file_data
+SET additional_content "
+This is additional content appended to the file."
+APPENDFILE additional_content filename
+PRINTSTR File updated successfully.
+READFILE filename updated_file_data
+PRINTSTR Updated file contents:
+PRINT updated_file_data
+IF file exists filename
+PRINTSTR The file exists.
+ELSE
+PRINTSTR The file does not exist.
+DELETEFILE filename
+PRINTSTR File cleanup completed.
+END

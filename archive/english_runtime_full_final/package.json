@@ -1,0 +1,1 @@
+{"name":"nlvm","displayName":"NLVM Support","version":"0.0.1","engines":{"vscode":"^1.70.0"},"contributes":{"languages":[{"id":"nlvm","extensions":[".nl"]}],"grammars":[{"language":"nlvm","scopeName":"source.nlvm","path":"syntaxes/nlvm.tmLanguage.json"}]}}

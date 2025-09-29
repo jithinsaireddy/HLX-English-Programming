@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>EPL Playground</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 20px; }
+    textarea { width: 100%; height: 180px; font-family: monospace; }
+    pre { background: #f6f8fa; padding: 10px; overflow: auto; }
+    button { padding: 8px 14px; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h2>EPL Playground</h2>
+  <p>Write English Programming lines and click Run. Output goes to server log (prints).</p>
+  <textarea id="code"></textarea>
+  <div style="margin:10px 0;">
+    <button onclick="runEPL()">Run</button>
+  </div>
+  <pre id="msg"></pre>
+  <script>
+    const sample = `create a variable called x and set it to 2\ncreate a variable called y and set it to 3\nadd x and y and store the result in sum\nprint sum`;
+    document.getElementById('code').value = sample;
+    async function runEPL() {
+      const res = await fetch('/epl/exec', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({code: document.getElementById('code').value}) });
+      const j = await res.json();
+      document.getElementById('msg').textContent = j.ok ? j.message : ('Error: '+j.error);
+    }
+  </script>
+</body>
+</html>
+
+

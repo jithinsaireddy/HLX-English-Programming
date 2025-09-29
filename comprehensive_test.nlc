@@ -1,0 +1,39 @@
+SET message "hello, world!"
+PRINT message
+SET x 10
+SET y 5
+ADD x y sum
+PRINT sum
+SET first_name "john"
+SET last_name "doe"
+CONCAT first_name last_name full_name
+PRINT full_name
+LIST numbers 1 2 3 4 5
+PRINT numbers
+BUILTIN LENGTH numbers list_length
+PRINT list_length
+BUILTIN SUM numbers list_sum
+PRINT list_sum
+INDEX numbers 2 third_item
+PRINT third_item
+DICT person name:"alice",age:30,city:"new york"
+PRINT person
+GET person name person_name
+PRINT person_name
+FUNC_DEF add_numbers a b
+ADD a b sum
+RETURN sum
+FUNC_DEF greet name
+CONCAT "hello, " name greeting
+RETURN greeting
+CALL add_numbers 7 3 function_result
+PRINT function_result
+CALL greet "alice" greeting_result
+PRINT greeting_result
+SET age 25
+IF age > 18
+END_IF
+SET status "Adult"
+ELSE
+SET status "Minor"
+PRINT status

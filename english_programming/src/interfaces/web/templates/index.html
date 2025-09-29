@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>English Runtime Web</title>
+</head>
+<body>
+    <h1>English Language Runtime</h1>
+    <form method="post">
+        <textarea name="code" rows="10" cols="60" placeholder="Write English code here...">{{ prefill }}</textarea><br>
+        <label><input type="checkbox" name="lint" value="1"> Lint before run</label>
+        <input type="text" name="name" placeholder="Snippet name (optional)">
+        <label><input type="checkbox" name="save" value="1"> Save snippet</label>
+        <input type="submit" value="Run">
+    </form>
+    <p>{{ output }}</p>
+    {% if snippets %}
+    <h3>Saved Snippets</h3>
+    <ul>
+        {% for s in snippets %}
+        <li><a href="?load={{ s }}">{{ s }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</body>
+</html>

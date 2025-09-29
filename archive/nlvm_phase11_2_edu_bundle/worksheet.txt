@@ -1,0 +1,18 @@
+📝 NLVM Student Worksheet
+
+1. Set a variable called age to 12
+   ___________________________________________
+
+2. Add age and 8, and store the result in final
+   ___________________________________________
+
+3. Print the value of final
+   ___________________________________________
+
+4. BONUS: Write your name to a file
+   ___________________________________________
+
+5. Read a file and print its content
+   ___________________________________________
+
+Great job! You just wrote a full program in English 🎉

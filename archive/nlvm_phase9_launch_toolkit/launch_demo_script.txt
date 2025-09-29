@@ -1,0 +1,40 @@
+🎥 Launch Video Script:
+
+(Voiceover)
+"What if... anyone could code?"
+
+(Show text being typed)
+"Create a variable called name and set it to 'Earth'"
+"Print name"
+
+(Voiceover)
+"No syntax. No IDE. Just... you."
+
+(Show child typing code, then business user)
+
+"Meet NLVM – the world’s first Human Language Virtual Machine."
+
+---
+
+🧪 Demo Steps:
+
+1. Open terminal
+2. Edit `program.nl`:
+   ```
+   Create a variable called city and set it to London
+   Call OpenWeather API with city as London and store temperature in temp
+   Print temp
+   ```
+
+3. Run:
+   ```
+   python nl_compiler.py
+   python nlvm.py
+   ```
+
+4. Output:
+   ```
+   London has 22°C (demo value)
+   ```
+
+✔️ Done. You've just coded – without code.

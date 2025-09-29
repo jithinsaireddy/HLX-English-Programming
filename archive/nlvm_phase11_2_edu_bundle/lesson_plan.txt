@@ -1,0 +1,26 @@
+# NLVM Classroom Lesson Plan
+
+## Objective:
+Introduce students to programming using natural language.
+
+## Materials:
+- Laptops with Python and spaCy installed
+- NLVM Web Playground or CLI
+- Worksheets (provided)
+
+## Lesson Steps:
+1. Explain what NLVM is (like talking to the computer)
+2. Show example:
+   "Set x to 10"
+   "Add x and 20 and store the result in total"
+   "Print total"
+
+3. Activity:
+   - Ask students to write their own programs in English
+   - Compile and run them together
+
+4. Bonus:
+   - Use Web Playground or VSCode extension
+
+## Learning Outcome:
+Students understand variables, operations, and outputs using English logic.

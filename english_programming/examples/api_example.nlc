@@ -1,0 +1,13 @@
+SET city "san_francisco"
+SET api_key "demo_key"
+APICALL WEATHER city weather_data
+PRINTSTR Weather data for:
+PRINT city
+PRINTSTR Temperature:
+PRINT weather_data
+SET another_city "new_york"
+APICALL WEATHER another_city ny_weather
+PRINTSTR Weather data for:
+PRINT another_city
+PRINTSTR Temperature:
+PRINT ny_weather

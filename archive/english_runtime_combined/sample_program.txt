@@ -1,0 +1,17 @@
+Create a variable called count and set it to 0
+Create a list called numbers with values 5, 10, 15, 20, 25
+Create a dictionary called person with name as John and age as 30
+
+Define a function called add_numbers with inputs a and b:
+    Add a and b and store the result in result
+    Return result
+
+While count is less than 5:
+    Add 1 to count
+    Print count
+    
+Call add_numbers with values 10 and 20 and store result in sum
+Print sum
+
+Print person.name
+Print person.age

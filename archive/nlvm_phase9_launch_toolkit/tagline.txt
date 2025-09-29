@@ -1,0 +1,9 @@
+💡 Project Tagline:
+"NLVM – Code is dead. Language lives."
+
+🧠 Launch One-Liner:
+"A 7-year-old just built a weather app – in English."
+
+🎯 Positioning:
+Just like ChatGPT made people talk to AI,
+NLVM makes people *code* in their own words.

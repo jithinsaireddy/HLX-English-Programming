@@ -1,0 +1,198 @@
+{
+  "Variable Creation": [
+    {
+      "pattern": "Create a variable x and set it to 42",
+      "success": true,
+      "bytecode": [
+        "SET it 42"
+      ],
+      "debug": "\nCompiling temp_variable_creation.nl with NLP enhancements...\n\nBytecode output:\nSET it 42\n\nCompiled temp_variable_creation.nl to temp_variable_creation.nlc\n"
+    },
+    {
+      "pattern": "Set y to 100",
+      "success": true,
+      "bytecode": [
+        "SET y 100"
+      ],
+      "debug": "\nCompiling temp_variable_creation.nl with NLP enhancements...\n\nBytecode output:\nSET y 100\n\nCompiled temp_variable_creation.nl to temp_variable_creation.nlc\n"
+    },
+    {
+      "pattern": "Let z be 'hello world'",
+      "success": true,
+      "bytecode": [
+        "SET z \"hello world\""
+      ],
+      "debug": "\nCompiling temp_variable_creation.nl with NLP enhancements...\n\nBytecode output:\nSET z \"hello world\"\n\nCompiled temp_variable_creation.nl to temp_variable_creation.nlc\n"
+    },
+    {
+      "pattern": "Define counter as 1",
+      "success": true,
+      "bytecode": [
+        "SET counter 1"
+      ],
+      "debug": "\nCompiling temp_variable_creation.nl with NLP enhancements...\n\nBytecode output:\nSET counter 1\n\nCompiled temp_variable_creation.nl to temp_variable_creation.nlc\n"
+    }
+  ],
+  "Arithmetic Operations": [
+    {
+      "pattern": "Add x and y and store in sum",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_arithmetic_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'add x and y and store in sum'\n\nBytecode output:\n\nCompiled temp_arithmetic_operations.nl to temp_arithmetic_operations.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Subtract 10 from x and store in result",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_arithmetic_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'subtract 10 from x and store in result'\n\nBytecode output:\n\nCompiled temp_arithmetic_operations.nl to temp_arithmetic_operations.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Multiply x by 2 and save in doubled",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_arithmetic_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'multiply x by 2 and save in doubled'\n\nBytecode output:\n\nCompiled temp_arithmetic_operations.nl to temp_arithmetic_operations.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Divide y by 4 and put in quarter",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_arithmetic_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'divide y by 4 and put in quarter'\n\nBytecode output:\n\nCompiled temp_arithmetic_operations.nl to temp_arithmetic_operations.nlc\n",
+      "warning": true
+    }
+  ],
+  "String Operations": [
+    {
+      "pattern": "Join greeting and name to create message",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_string_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'join greeting and name to create message'\n\nBytecode output:\n\nCompiled temp_string_operations.nl to temp_string_operations.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Set message to greeting + ' ' + name",
+      "success": true,
+      "bytecode": [
+        "SET message \"greeting + ' ' + name\""
+      ],
+      "debug": "\nCompiling temp_string_operations.nl with NLP enhancements...\n\nBytecode output:\nSET message \"greeting + ' ' + name\"\n\nCompiled temp_string_operations.nl to temp_string_operations.nlc\n"
+    },
+    {
+      "pattern": "Combine 'Hello, ' with name into greeting",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_string_operations.nl with NLP enhancements...\nWarning: Could not understand line: 'combine 'hello, ' with name into greeting'\n\nBytecode output:\n\nCompiled temp_string_operations.nl to temp_string_operations.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Set full_name to first_name + ' ' + last_name",
+      "success": true,
+      "bytecode": [
+        "SET full_name \"first_name + ' ' + last_name\""
+      ],
+      "debug": "\nCompiling temp_string_operations.nl with NLP enhancements...\n\nBytecode output:\nSET full_name \"first_name + ' ' + last_name\"\n\nCompiled temp_string_operations.nl to temp_string_operations.nlc\n"
+    }
+  ],
+  "Conditional Logic": [
+    {
+      "pattern": "If x is greater than 10: Print 'Large' Else: Print 'Small' End if",
+      "success": true,
+      "bytecode": [
+        "IF x > 10",
+        "IF x > 10",
+        "END",
+        "END"
+      ],
+      "debug": "\nCompiling temp_conditional_logic.nl with NLP enhancements...\n\nBytecode output:\nIF x > 10\nIF x > 10\nEND\nEND\n\nCompiled temp_conditional_logic.nl to temp_conditional_logic.nlc\n"
+    },
+    {
+      "pattern": "When age is at least 18, print 'Adult'",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_conditional_logic.nl with NLP enhancements...\nWarning: Could not understand line: 'when age is at least 18, print 'adult''\n\nBytecode output:\n\nCompiled temp_conditional_logic.nl to temp_conditional_logic.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Check if name equals 'John', then print 'Hello John'",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_conditional_logic.nl with NLP enhancements...\nWarning: Could not understand line: 'check if name equals 'john', then print 'hello john''\n\nBytecode output:\n\nCompiled temp_conditional_logic.nl to temp_conditional_logic.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "If temperature < 32 then print 'Freezing'",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_conditional_logic.nl with NLP enhancements...\nWarning: Could not understand line: 'if temperature < 32 then print 'freezing''\n\nBytecode output:\n\nCompiled temp_conditional_logic.nl to temp_conditional_logic.nlc\n",
+      "warning": true
+    }
+  ],
+  "Loops and Counters": [
+    {
+      "pattern": "Set counter to 1",
+      "success": true,
+      "bytecode": [
+        "SET counter 1"
+      ],
+      "debug": "\nCompiling temp_loops_and_counters.nl with NLP enhancements...\n\nBytecode output:\nSET counter 1\n\nCompiled temp_loops_and_counters.nl to temp_loops_and_counters.nlc\n"
+    },
+    {
+      "pattern": "While counter <= 5: Print counter, Increment counter, End while",
+      "success": true,
+      "bytecode": [
+        "WHILE counter <= 5"
+      ],
+      "debug": "\nCompiling temp_loops_and_counters.nl with NLP enhancements...\n\nBytecode output:\nWHILE counter <= 5\n\nCompiled temp_loops_and_counters.nl to temp_loops_and_counters.nlc\n"
+    },
+    {
+      "pattern": "Increase counter by 2",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_loops_and_counters.nl with NLP enhancements...\nWarning: Could not understand line: 'increase counter by 2'\n\nBytecode output:\n\nCompiled temp_loops_and_counters.nl to temp_loops_and_counters.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Add 1 to counter",
+      "success": true,
+      "bytecode": [
+        "ADD 1 counter counter"
+      ],
+      "debug": "\nCompiling temp_loops_and_counters.nl with NLP enhancements...\n\nBytecode output:\nADD 1 counter counter\n\nCompiled temp_loops_and_counters.nl to temp_loops_and_counters.nlc\n"
+    }
+  ],
+  "Complex Queries": [
+    {
+      "pattern": "What is the value of x?",
+      "success": true,
+      "bytecode": [
+        "PRINT the"
+      ],
+      "debug": "\nCompiling temp_complex_queries.nl with NLP enhancements...\n\nBytecode output:\nPRINT the\n\nCompiled temp_complex_queries.nl to temp_complex_queries.nlc\n"
+    },
+    {
+      "pattern": "Show me the counter",
+      "success": true,
+      "bytecode": [
+        "PRINT counter"
+      ],
+      "debug": "\nCompiling temp_complex_queries.nl with NLP enhancements...\n\nBytecode output:\nPRINT counter\n\nCompiled temp_complex_queries.nl to temp_complex_queries.nlc\n"
+    },
+    {
+      "pattern": "Tell me what y equals",
+      "success": false,
+      "bytecode": [],
+      "debug": "\nCompiling temp_complex_queries.nl with NLP enhancements...\nWarning: Could not understand line: 'tell me what y equals'\n\nBytecode output:\n\nCompiled temp_complex_queries.nl to temp_complex_queries.nlc\n",
+      "warning": true
+    },
+    {
+      "pattern": "Display the result",
+      "success": true,
+      "bytecode": [
+        "PRINT result"
+      ],
+      "debug": "\nCompiling temp_complex_queries.nl with NLP enhancements...\n\nBytecode output:\nPRINT result\n\nCompiled temp_complex_queries.nl to temp_complex_queries.nlc\n"
+    }
+  ]
+}

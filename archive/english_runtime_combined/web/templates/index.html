@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>English Language Runtime - Combined Edition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .button-container {
+            margin: 10px 0;
+            text-align: right;
+        }
+        input[type="submit"] {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background: #45a049;
+        }
+        .output {
+            background: #333;
+            color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .features {
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            padding: 10px 15px;
+            margin: 20px 0;
+        }
+        code {
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>English Language Runtime</h1>
+        <p>Combined Edition: All features from Phase 5 with the improved interface of Phase 6</p>
+        
+        <div class="features">
+            <h3>Available Features:</h3>
+            <ul>
+                <li><code>Create a variable called x and set it to 10</code> - Variable creation</li>
+                <li><code>Create a list called numbers with values 1, 2, 3</code> - List creation</li>
+                <li><code>Create a dictionary called user with name as Alice and age as 30</code> - Dictionary creation</li>
+                <li><code>Add x and 5 and store the result in sum</code> - Basic arithmetic</li>
+                <li><code>Define a function called multiply with inputs a and b:</code> - Function definition</li>
+                <li><code>Call multiply with values 5 and 6 and store result in product</code> - Function calls</li>
+                <li><code>If x is greater than 5:</code> - Conditionals</li>
+                <li><code>While count is less than 5:</code> - Loops</li>
+            </ul>
+        </div>
+        
+        <form method="post">
+            <textarea name="code" rows="12" cols="60" placeholder="Write English code here...">{{ code }}</textarea>
+            <div class="button-container">
+                <input type="submit" value="Run Program">
+            </div>
+        </form>
+        
+        {% if output %}
+        <div class="output">{{ output }}</div>
+        {% endif %}
+    </div>
+</body>
+</html>

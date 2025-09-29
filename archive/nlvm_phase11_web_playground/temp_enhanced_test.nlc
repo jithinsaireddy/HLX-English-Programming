@@ -1,0 +1,34 @@
+SET total "value 100"
+SET result 25
+PRINT result
+SET name "John Doe"
+SET greeting "Hello, "
+CONCAT greeting name full_greeting
+PRINT full_greeting
+PRINTSTR This is a direct string literal
+PRINTSTR This should also work as a print statement
+SET counter 1
+PRINT counter
+ADD counter 2 counter
+PRINT counter
+ADD counter 3 counter
+PRINT counter
+ADD counter 1 counter
+PRINT counter
+SET number1 10
+SET number2 5
+ADD number1 number2 sum_result
+PRINT sum_result
+MUL number1 number2 product_result
+PRINT product_result
+SUB number1 number2 difference
+PRINT difference
+DIV number1 number2 quotient
+PRINT quotient
+SET age 21
+PRINTSTR You are an adult
+ELSE
+PRINTSTR You are a minor
+END
+CONCAT "The total is: " total final_message
+PRINT final_message

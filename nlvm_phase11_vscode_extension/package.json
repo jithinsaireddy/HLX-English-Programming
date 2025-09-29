@@ -1,0 +1,36 @@
+{
+  "name": "english-programming",
+  "displayName": "English Programming",
+  "description": "Language support for English Programming with format/lint commands",
+  "version": "0.1.0",
+  "publisher": "english",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "english",
+        "aliases": ["English Programming", "english"],
+        "extensions": [".nl"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "english",
+        "scopeName": "source.english",
+        "path": "./syntaxes/english.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      { "command": "english.format", "title": "English: Format File" },
+      { "command": "english.lint", "title": "English: Lint File" }
+    ]
+  },
+  "activationEvents": [],
+  "main": "./extension.js",
+  "scripts": {},
+  "devDependencies": {}
+}
+
+

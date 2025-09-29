@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>HLX Playground</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 20px; }
+    textarea { width: 100%; height: 180px; font-family: monospace; }
+    pre { background: #f6f8fa; padding: 10px; overflow: auto; }
+    .col { width: 32%; display: inline-block; vertical-align: top; }
+    .col pre { height: 300px; }
+    button { padding: 8px 14px; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h2>HLX Playground</h2>
+  <p>Paste HLX spec and click Compile or Run Demo. Compile shows the generated files below. Use Download to save them.</p>
+  <label>Examples: 
+    <select id="examples" onchange="loadExample(this.value)">
+      <option value="boiler">Boiler Overpressure (basic)</option>
+      <option value="thermostat">HVAC Thermostat (hysteresis+cooldown)</option>
+      <option value="water">Water Tank (multi-sensor, composite)</option>
+      <option value="line">Pipeline Leak Detection (rate-of-change)</option>
+    </select>
+  </label>
+  <textarea id="spec"></textarea>
+  <div style="margin:10px 0;">
+    <button onclick="compileHLX()">Compile</button>
+    <button onclick="runDemo()">Run Demo</button>
+    <button onclick="downloadOutputs()">Download</button>
+  </div>
+  <div class="col">
+    <h3>rtos.rs</h3>
+    <pre id="rtos"></pre>
+  </div>
+  <div class="col">
+    <h3>edge_manifest.json</h3>
+    <pre id="manifest"></pre>
+  </div>
+  <div class="col">
+    <h3>thing_description.json</h3>
+    <pre id="td"></pre>
+  </div>
+  <h3>Demo Log</h3>
+  <pre id="log"></pre>
+  <script>
+    const samples = {
+      boiler: `Device "Boiler-A" at mqtt://plant/boilerA
+Sensor "pressure" unit kPa period 200 ms
+Actuator "relief_valve" actions open, close
+
+If pressure > 180 kPa for 600 ms then
+  open relief_valve
+  publish event "overpressure" with timestamp and value
+  store last 5000 ms of pressure to table "incidents"`,
+      thermostat: `Device "HVAC-Unit-42" at mqtt://building/A3/HVAC42
+Sensor "temp" unit C period 1 s
+Actuator "heater" actions on, off
+Actuator "cooler" actions on, off
+
+# Maintain 22C ±0.5C with cooldown to prevent flapping (fast demo)
+If temp < 21.5 C for 2 s with hysteresis 5 and cooldown 5000 ms then
+  on heater
+  off cooler
+  publish event "heat_on"
+If temp > 22.5 C for 2 s with hysteresis 5 and cooldown 5000 ms then
+  off heater
+  on cooler
+  publish event "cool_on"`,
+      water: `Device "Tank-7" at mqtt://plant/water/T7
+Sensor "level" unit % period 500 ms
+Sensor "flow_in" unit Lps period 500 ms
+Sensor "flow_out" unit Lps period 500 ms
+Actuator "inlet_valve" actions open, close
+Actuator "outlet_valve" actions open, close
+
+# Prevent overflow and run dry (fast demo)
+If level >= 95 for 1000 ms then
+  close inlet_valve
+  publish event "overflow_protect"
+If level <= 10 for 1000 ms then
+  close outlet_valve
+  publish event "dry_protect"
+
+# If inflow >> outflow for sustained time, investigate (fast demo)
+If flow_in > flow_out for 1000 ms then
+  store last 10000 ms of flow_in, flow_out to table "imbalance"
+  publish event "imbalance_detected"`,
+      line: `Device "Pipe-12" at mqtt://field/pipe12
+Sensor "pressure" unit kPa period 200 ms
+Sensor "pressure_downstream" unit kPa period 200 ms
+Actuator "main_valve" actions close, open
+
+# Rapid pressure drop + gradient indicates leak (fast demo)
+If pressure - pressure_downstream > 50 for 600 ms then
+  close main_valve
+  publish event "possible_leak"
+  store last 10000 ms of pressure, pressure_downstream to table "leaks"`
+    };
+    function loadExample(key) {
+      document.getElementById('spec').value = samples[key] || '';
+    }
+    loadExample('boiler');
+    async function compileHLX() {
+      const res = await fetch('/hlx/compile', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({spec: document.getElementById('spec').value}) });
+      const j = await res.json();
+      if (!j.ok) { alert(j.error); return; }
+      document.getElementById('rtos').textContent = j.rtos;
+      document.getElementById('manifest').textContent = j.manifest;
+      document.getElementById('td').textContent = j.td;
+    }
+    async function runDemo() {
+      const res = await fetch('/hlx/run_demo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({spec: document.getElementById('spec').value}) });
+      const j = await res.json();
+      if (!j.ok) { alert(j.error); return; }
+      document.getElementById('log').textContent = j.log;
+    }
+    function downloadOutputs() {
+      const rtos = document.getElementById('rtos').textContent;
+      const manifest = document.getElementById('manifest').textContent;
+      const td = document.getElementById('td').textContent;
+      if (!rtos && !manifest && !td) { alert('Compile first'); return; }
+      const zipParts = [
+        {name: 'rtos.rs', content: rtos},
+        {name: 'edge_manifest.json', content: manifest},
+        {name: 'thing_description.json', content: td},
+      ];
+      zipParts.forEach(p => {
+        const blob = new Blob([p.content], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = p.name;
+        a.click();
+      });
+    }
+    // Usage help
+    document.getElementById('log').textContent = 'Usage:\n1) Paste HLX in the box.\n2) Click Compile to see outputs.\n3) Click Run Demo to simulate.\n4) Optionally Download outputs to files.';
+  </script>
+</body>
+</html>
+
+
