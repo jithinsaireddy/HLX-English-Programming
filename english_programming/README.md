@@ -35,11 +35,13 @@ This package contains the core compiler pipeline, intermediate representation (I
 - MQTT/CoAP connectors in `hlx.edge_module` for telemetry and command/control
 - Safety envelopes: bounds checks, watchdogs, and fail‑safe transitions
 
-## Developer Workflow
+## Developer Workflow (Primary NLBC Binary Path)
 
-Compile and execute an English program:
+Compile English to NLBC binary and execute with NLVM:
 
 ```bash
+python -m english_programming.run_english ../examples/basic_operations.nl
+# or legacy runner
 python ../../integrated_test_runner.py ../examples/basic_operations.nl
 ```
 
@@ -62,8 +64,11 @@ python -m english_programming.hlx.edge_module --spec ../examples/boiler_a.hlx --
 - Add IR passes for optimization or static analysis
 - Add HLX verbs for domain‑specific actions (publish/subscribe/actuate)
 
-## References
+## NLBC and Tooling References
 
+- NLBC binary compiler: `english_programming/bin/nlp_compiler_bin.py`
+- NLBC disassembler: `english_programming/bin/nlbc_disassembler.py`
+- VM runtime: `english_programming/src/vm/improved_nlvm.py`
 - See root `README.md` for a system overview and use cases
 - See `english_programming/hlx/README.md` for HLX grammar and safety model
 

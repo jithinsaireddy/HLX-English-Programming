@@ -8,18 +8,18 @@ English Programming is a research-grade system that compiles controlled English 
 - Compile to multiple targets: NLVM bytecode for rapid execution, Rust/FreeRTOS scaffolds for embedded MCUs, edge container manifests for gateways, and interoperable W3C WoT Thing Descriptions.
 - Integrate real-time data streams, stateful policies, and safety envelopes for industrial, healthcare, and smart‑city deployments.
 
-## End‑to‑End Architecture
+## Primary Pipeline (English → NLBC Binary → NLVM)
 
 ```
-English spec → Parsing + Semantic Normalization → IR →
-  (a) Bytecode → NLVM execution
-  (b) HLX backends → Rust/FreeRTOS, Edge manifests, WoT TD → downstream binary builds
+English program (.nl) → Compiler → NLBC binary (.nlc) → NLVM execution
+
+HLX spec (.hlx) → HLX generators → Rust/FreeRTOS, Edge manifests, WoT TD → downstream target binaries
 ```
 
-- **English Front‑End**: Deterministic parser with optional NLP assistance (spaCy) to normalize English into a typed, explicit IR with disambiguation and constraints.
-- **IR**: A compact, SSA‑like instruction set tailored for control flow, data flow, and side‑effect boundaries.
-- **Bytecode + NLVM**: The IR lowers to bytecode executed by NLVM, providing deterministic evaluation, sandboxed I/O, and introspection for debugging/testing.
-- **Binary Code Conversion (via HLX toolchain)**: HLX specifications generate Rust/FreeRTOS skeletons and edge manifests that are compiled downstream to machine binaries and deployable images. This bridges natural language to hardware‑level executables without sacrificing verifiability.
+- **English→NLBC Compiler (primary)**: Translates controlled English directly to NLBC, a compact binary bytecode. See `english_programming/run_english.py` for CLI flags including disassembly.
+- **NLVM (primary runtime)**: Executes NLBC deterministically with capability‑gated I/O and execution guards. See `english_programming/src/vm/improved_nlvm.py`.
+- **IR (secondary, internal)**: We maintain an internal IR to support analysis/transformations. It is not the primary public artifact; the public contract is NLBC and HLX outputs.
+- **HLX Generators**: Produce deployable artifacts for embedded and edge: Rust/FreeRTOS skeletons, gateway manifests, and W3C WoT TDs.
 
 ## HLX: Controlled‑English for Real‑Time IoT/Edge
 
@@ -36,12 +36,13 @@ HLX models sensors, actuators, timing constraints, and policies in strict Englis
 
 See the dedicated HLX README under `english_programming/hlx/README.md` for grammar, timing, and safety details.
 
-## Real‑Time Data and Streaming
+## Real‑Time Data, Streaming, and Binary Execution Advantages
 
-- Ingestion: MQTT/CoAP/Web sockets to NLVM or HLX edge modules
-- Semantics: event‑time vs processing‑time distinction, windowing, and stateful policies in English
-- Safety: bounds checks, rate limits, dead‑man switches, and fail‑safe modes expressed in controlled English
-- Observability: structured logs, execution traces, and testable scenarios from natural language specifications
+- Direct binary execution via NLBC minimizes interpretive overhead and enables tight execution guards.
+- Ingestion: MQTT/CoAP/WebSockets into NLVM/HLX edge modules with deterministic handlers.
+- Semantics: event‑time vs processing‑time, windowing, and stateful English policies.
+- Safety: bounds checks, rate limits, watchdogs, and fail‑safe transitions expressed in controlled English.
+- Observability: structured logs, disassembly tooling, traces tied back to English source.
 
 ## Representative Use Cases
 
@@ -79,6 +80,12 @@ python -m english_programming.hlx.edge_module --spec english_programming/example
 - `english_programming/examples`: example `.nl` and `.hlx` programs
 - `hlx_out/`: generated outputs (ignored by VCS)
 - `ui/english-ui`: experimental React/TypeScript UI
+
+## Differentiation and Impact
+
+- Unlike ML code generators (e.g., prompt-to-code), our compiler is deterministic and produces a verifiable binary (NLBC) with a stable VM contract.
+- Unlike natural-language DSLs that target a single environment, HLX produces multi‑target artifacts (MCU Rust/FreeRTOS, edge manifests, WoT TD) from one source of truth.
+- Compared to historical natural-language languages (e.g., domain‑specific or interactive notebooks), this system offers end‑to‑end compilation to binary, real‑time semantics, and cross‑domain safety constructs.
 
 ## Open Source and Governance
 
