@@ -18,6 +18,7 @@ def main():
     ap = argparse.ArgumentParser(description='HLX local demo runner')
     ap.add_argument('spec', help='HLX spec file')
     ap.add_argument('--realtime', action='store_true', help='Sleep according to sensor period')
+    ap.add_argument('--json', action='store_true', help='Emit JSON trace to stdout')
     args = ap.parse_args()
 
     spec = HLXParser().parse(open(args.spec).read())
@@ -30,8 +31,25 @@ def main():
     hysteresis = policy.hysteresis_pct / 100.0
     cool_until = -1
 
-    print(f"Demo starting for {thing.name} at {thing.endpoint}")
-    print(f"Sensor {sensor.name} every {period_ms} ms; policy: {policy.metric} {policy.comparator} {policy.threshold} for {policy.duration_ms} ms")
+    trace = {
+        'device': thing.name,
+        'endpoint': thing.endpoint,
+        'sensor': sensor.name,
+        'period_ms': period_ms,
+        'policy': {
+            'metric': policy.metric,
+            'comparator': policy.comparator,
+            'threshold': policy.threshold,
+            'duration_ms': policy.duration_ms,
+            'hysteresis_pct': policy.hysteresis_pct,
+            'cooldown_ms': policy.cooldown_ms,
+        },
+        'samples': [],
+        'trigger': None
+    }
+    if not args.json:
+        print(f"Demo starting for {thing.name} at {thing.endpoint}")
+        print(f"Sensor {sensor.name} every {period_ms} ms; policy: {policy.metric} {policy.comparator} {policy.threshold} for {policy.duration_ms} ms")
 
     # Generate 50 samples with a spike that will trigger the policy
     vals = simulate_pressure_sequence(50, base=150.0, spike_after=10, spike_value=max(policy.threshold + 5.0, 185.0))
@@ -51,18 +69,27 @@ def main():
         elif policy.comparator == '==':
             cond = abs(v - policy.threshold) < 1e-9
         consec = consec + 1 if cond else 0
-        print(f"t={idx*period_ms:04d}ms {sensor.name}={v:.1f}")
+        t_ms = idx*period_ms
+        if not args.json:
+            print(f"t={t_ms:04d}ms {sensor.name}={v:.1f}")
+        trace['samples'].append({'t_ms': t_ms, 'value': v, 'consecutive': consec})
         if consec >= need_consecutive:
-            print("-- POLICY TRIGGERED --")
-            for act in policy.actions:
-                print(f"ACTION: {act}")
+            if not args.json:
+                print("-- POLICY TRIGGERED --")
+                for act in policy.actions:
+                    print(f"ACTION: {act}")
+            trace['trigger'] = {'t_ms': t_ms, 'actions': policy.actions}
             if policy.cooldown_ms > 0:
                 cool_until = idx*period_ms + policy.cooldown_ms
             break
         if args.realtime:
             time.sleep(period_ms / 1000.0)
 
-    print("Demo complete.")
+    if args.json:
+        import json
+        print(json.dumps(trace))
+    else:
+        print("Demo complete.")
 
 
 if __name__ == '__main__':

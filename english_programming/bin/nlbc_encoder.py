@@ -10,6 +10,7 @@ SEC_SYMBOLS   = 2
 SEC_CODE      = 3
 SEC_FUNCS     = 4
 SEC_CLASSES   = 5
+SEC_DEBUG     = 6  # optional: source mapping by instruction ordinal
 
 # opcodes
 OP_LOAD_CONST  = 0x01
@@ -347,6 +348,65 @@ def write_module_full(filepath, constants, symbols, main_instrs, funcs, classes)
         encoded_base = 0 if base_idx is None else (base_idx + 1)
         class_bytes.append((class_sym_idx, encoded_base, field_syms, compiled_methods))
     blob += encode_classes(class_bytes)
+    with open(filepath, 'wb') as f:
+        f.write(blob)
+
+
+def encode_debug(main_line_map, func_line_maps):
+    """Encode optional source mapping by instruction ordinal.
+
+    main_line_map: List[int] mapping instruction index -> 1-based source line (0 for unknown)
+    func_line_maps: List[List[int]] per function in same order as funcs table
+    """
+    body = bytearray()
+    # Tag 1 = main, then count and entries
+    body += bytes([1])
+    body += write_uleb128(len(main_line_map))
+    for ln in main_line_map:
+        body += write_uleb128(int(max(0, ln)))
+    # Tag 2 = functions, count and then for each: func_index, count, entries
+    body += bytes([2])
+    body += write_uleb128(len(func_line_maps))
+    for idx, fmap in enumerate(func_line_maps or []):
+        body += write_uleb128(int(idx))
+        body += write_uleb128(len(fmap))
+        for ln in fmap:
+            body += write_uleb128(int(max(0, ln)))
+    return bytes([SEC_DEBUG]) + write_uleb128(len(body)) + body
+
+
+def write_module_full_with_debug(filepath, constants, symbols, main_instrs, funcs, classes, main_line_map, func_line_maps):
+    """Write full module and append optional debug section."""
+    header = bytearray()
+    header += MAGIC
+    header += pack("<H", VER_MAJOR)
+    header += pack("<H", VER_MINOR)
+    header += bytes([0])
+
+    main_code = assemble_code(main_instrs)
+
+    blob  = header
+    blob += encode_constants(constants)
+    blob += encode_symbols(symbols)
+    blob += encode_code(main_code)
+    func_bytes = []
+    for sym_idx, params, instrs in funcs:
+        func_bytes.append((sym_idx, params, assemble_code(instrs)))
+    blob += encode_funcs(func_bytes)
+    class_bytes = []
+    for class_sym_idx, base_idx, field_syms, methods in classes:
+        compiled_methods = []
+        for mname_idx, mparams, minst in methods:
+            compiled_methods.append((mname_idx, mparams, assemble_code(minst)))
+        encoded_base = 0 if base_idx is None else (base_idx + 1)
+        class_bytes.append((class_sym_idx, encoded_base, field_syms, compiled_methods))
+    blob += encode_classes(class_bytes)
+    # Append debug section
+    try:
+        blob += encode_debug(main_line_map or [], func_line_maps or [])
+    except Exception:
+        # Do not fail module writing if debug encoding fails
+        pass
     with open(filepath, 'wb') as f:
         f.write(blob)
 

@@ -1,0 +1,13 @@
+Device "HVAC-Unit-42" at mqtt://building/A3/HVAC42
+Sensor "temp" unit C period 1 s
+Actuator "heater" actions on, off
+Actuator "cooler" actions on, off
+
+If temp < 21.5 C for 2 s with hysteresis 5 % and cooldown 5000 ms then
+  on heater
+  off cooler
+  publish event "heat_on"
+If temp > 22.5 C for 2 s with hysteresis 5 % and cooldown 5000 ms then
+  off heater
+  on cooler
+  publish event "cool_on"

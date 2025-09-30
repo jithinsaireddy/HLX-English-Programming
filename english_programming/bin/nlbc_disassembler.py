@@ -16,6 +16,7 @@ def disassemble(buf: bytes) -> str:
     i = 9
     out = []
     consts, syms, code, funcs, classes = [], [], b"", [], []
+    main_line_map, func_line_maps = [], []
     while i < len(buf):
         sid = buf[i]; i += 1
         slen, i = read_uleb128(buf, i)
@@ -72,6 +73,29 @@ def disassemble(buf: bytes) -> str:
                     code_b = sec[j:j+ln]; j += ln
                     methods.append((mname_idx, params, code_b))
                 classes.append((class_idx, base_idx, field_syms, methods))
+        elif sid == 6:
+            # DEBUG section: [tag=1][len][...lines...] [tag=2][fcount] {fidx,[len],[...]}*
+            j = 0
+            if j < len(sec) and sec[j] == 1:
+                j += 1
+                n, j = read_uleb128(sec, j)
+                main_line_map = []
+                for _ in range(n):
+                    ln, j = read_uleb128(sec, j)
+                    main_line_map.append(ln)
+            if j < len(sec) and sec[j] == 2:
+                j += 1
+                fcount, j = read_uleb128(sec, j)
+                func_line_maps = [None] * fcount
+                for _ in range(fcount):
+                    fidx, j = read_uleb128(sec, j)
+                    n, j = read_uleb128(sec, j)
+                    fmap = []
+                    for _ in range(n):
+                        ln, j = read_uleb128(sec, j)
+                        fmap.append(ln)
+                    if fidx < len(func_line_maps):
+                        func_line_maps[fidx] = fmap
 
     def dis_code(code_bytes):
         k = 0; lines = []
@@ -100,7 +124,17 @@ def disassemble(buf: bytes) -> str:
     for idx, s in enumerate(syms):
         out.append(f"[{idx}] {s}")
     out.append('== CODE ==')
-    out += dis_code(code)
+    code_lines = dis_code(code)
+    if main_line_map:
+        # prepend line:col info (col unknown; show line only)
+        with_src = []
+        for idx, ln in enumerate(code_lines):
+            src_ln = main_line_map[idx] if idx < len(main_line_map) else 0
+            prefix = f"[L{src_ln:04d}] " if src_ln else ""
+            with_src.append(prefix + ln)
+        out += with_src
+    else:
+        out += code_lines
     if funcs:
         out.append('== FUNCS ==')
         for name_idx, params, code_b in funcs:

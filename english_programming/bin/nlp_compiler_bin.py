@@ -1,6 +1,6 @@
 import re
 import logging
-from english_programming.bin.nlbc_encoder import write_module_with_funcs, write_module, CT_INT, CT_STR
+from english_programming.bin.nlbc_encoder import write_module_with_funcs, write_module, CT_INT, CT_STR, write_module_full_with_debug
 
 # Mandatory spaCy normalization for flexible English
 _NLP = None
@@ -54,7 +54,7 @@ def _canonicalize_synonyms(s: str) -> str:
     return s
 
 
-def compile_english_to_binary(english_lines, out_file="program.nlbc"):
+def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug: bool = True):
     # Drop comment lines early
     english_lines = [ln for ln in english_lines if str(ln).strip() and not str(ln).strip().startswith('#')]
 
@@ -190,6 +190,7 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc"):
         return out
 
     # Support colon/indent blocks inside arbitrary lists of lines
+    instr_line_map = []  # instruction index -> 1-based source line
     def _compile_lines_blocks(lines):
         instrs = []
         i2 = 0
@@ -452,12 +453,14 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc"):
             continue
 
         # otherwise compile into main (with simple control-flow lowering)
-        lowered = _compile_stmt_with_cf(line, constants, symbols)
+            lowered = _compile_stmt_with_cf(line, constants, symbols)
         if lowered is not None:
             main_instrs += lowered
+            instr_line_map.extend([i+1] * len(lowered))
         else:
             _, _, instrs, _ = _compile_line(line, constants, symbols)
             main_instrs += instrs
+            instr_line_map.extend([i+1] * len(instrs))
         i += 1
 
     # Optional typed IR pre-verify hook (scaffold)
@@ -480,7 +483,13 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc"):
         # Typed IR is optional; failures should not block binary generation
         pass
     from english_programming.bin.nlbc_encoder import write_module_full
-    write_module_full(out_file, constants, symbols, main_instrs, funcs, classes)
+    if with_debug:
+        try:
+            write_module_full_with_debug(out_file, constants, symbols, main_instrs, funcs, classes, instr_line_map, [])
+        except Exception:
+            write_module_full(out_file, constants, symbols, main_instrs, funcs, classes)
+    else:
+        write_module_full(out_file, constants, symbols, main_instrs, funcs, classes)
 
 
 def _compile_lines(lines, constants, symbols):

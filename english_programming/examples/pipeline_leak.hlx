@@ -1,0 +1,9 @@
+Device "Pipe-12" at mqtt://field/pipe12
+Sensor "pressure" unit kPa period 200 ms
+Sensor "pressure_downstream" unit kPa period 200 ms
+Actuator "main_valve" actions close, open
+
+If pressure - pressure_downstream > 50 for 600 ms then
+  close main_valve
+  publish event "possible_leak"
+  store last 10000 ms of pressure, pressure_downstream to table "leaks"
