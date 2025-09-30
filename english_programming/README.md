@@ -1,79 +1,47 @@
-# English Programming: Compiler, IR, NLVM, and HLX Backends
+# English Programming: NLBC/NLVM Core and HLX Backends (Technical Overview)
 
-This package contains the core compiler pipeline, intermediate representation (IR), the NLVM bytecode virtual machine, and HLX tooling for real‑time IoT/edge targets.
+## Summary
+This package provides the English→NLBC compiler pipeline, the NLVM deterministic bytecode virtual machine, and HLX generators for real‑time IoT/edge targets. spaCy (en_core_web_sm) is mandatory and automatically managed.
 
-## Technical Overview
+## Front‑End and Normalization
+- Controlled English with spaCy normalization (lemmatization, synonym canonicalization)
+- Entity resolution, type inference under constraints, capability tracking for effects
+- Internal IR for analysis; public primary artifact is NLBC (binary)
 
-### Front‑End and Semantic Normalization
+## NLBC Module Format (High‑level)
+- Sections: constants, symbols, main code, functions, classes
+- Disassembler available at `english_programming/bin/nlbc_disassembler.py`
 
-- Deterministic parsing of controlled English with optional NLP aids (spaCy)
-- Entity resolution, type inference under constraints, and effect tracking
-- Normalization to a typed IR with explicit control/data flow
+## NLVM Execution Model
+- Deterministic evaluation; capability‑gated I/O; operation/time guards
+- Tracing/disassembly for observability and debugging
 
-### Intermediate Representation (IR)
+## HLX Generators
+- `hlx_out/rtos.rs` (Rust/FreeRTOS skeleton)
+- `hlx_out/edge_manifest.json` (edge container manifest)
+- `hlx_out/thing_description.json` (W3C WoT TD)
 
-- Structured control flow (blocks, branches, joins)
-- Side‑effect boundaries (I/O, network, filesystem) carried as capabilities
-- Lowerable to: (a) NLVM bytecode, (b) HLX generators
-
-### NLVM Execution Model
-
-- Register‑like bytecode with deterministic evaluation
-- Sandboxed runtime with capability‑gated I/O
-- Tracing hooks for test runners and step‑through debugging
-
-### Binary Code Conversion via HLX
-
-- HLX specifications generate target artifacts:
-  - Rust/FreeRTOS task skeletons for MCU binaries (compiled downstream)
-  - Edge container manifests for gateway deployment
-  - W3C WoT Thing Descriptions for interoperability
-
-## Real‑Time and Streaming
-
-- Event‑time vs processing‑time semantics, windowing, and rate controls
-- MQTT/CoAP connectors in `hlx.edge_module` for telemetry and command/control
-- Safety envelopes: bounds checks, watchdogs, and fail‑safe transitions
-
-## Developer Workflow (Primary NLBC Binary Path)
-
-Compile English to NLBC binary and execute with NLVM:
-
+## Developer Workflow
 ```bash
 python -m english_programming.run_english ../examples/basic_operations.nl
-# or legacy runner
-python ../../integrated_test_runner.py ../examples/basic_operations.nl
-```
-
-Generate HLX artifacts and simulate:
-
-```bash
 python -m english_programming.hlx.cli ../examples/boiler_a.hlx --out ../../hlx_out
 python -m english_programming.hlx.run_demo ../examples/boiler_a.hlx
-```
-
-Run an MQTT‑backed edge module (optional broker):
-
-```bash
 python -m english_programming.hlx.edge_module --spec ../examples/boiler_a.hlx --endpoint mqtt://localhost
 ```
 
-## Extensibility
+## spaCy (Mandatory)
+```bash
+pip install -r ../../requirements.txt
+make -C ../.. nlp-model
+```
+- Auto‑download and load; fails fast if missing
+- Improves robustness for nested conditions and variant phrasings
 
-- Extension APIs under `src/extensions` for HTTP, files, and custom domains
-- Add IR passes for optimization or static analysis
-- Add HLX verbs for domain‑specific actions (publish/subscribe/actuate)
+## References
+- Compiler (binary): `english_programming/bin/nlp_compiler_bin.py`
+- Disassembler: `english_programming/bin/nlbc_disassembler.py`
+- VM: `english_programming/src/vm/improved_nlvm.py`
+- HLX grammar/safety: `english_programming/hlx/README.md`
 
-## NLBC and Tooling References
-
-- NLBC binary compiler: `english_programming/bin/nlp_compiler_bin.py`
-- NLBC disassembler: `english_programming/bin/nlbc_disassembler.py`
-- VM runtime: `english_programming/src/vm/improved_nlvm.py`
-- See root `README.md` for a system overview and use cases
-- See `english_programming/hlx/README.md` for HLX grammar and safety model
-
-## License and Governance
-
-- MIT License (root `LICENSE`)
-- Contributing: `CONTRIBUTING.md`
-- Code of Conduct: `CODE_OF_CONDUCT.md`
+## Governance
+- MIT License (root `LICENSE`), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`

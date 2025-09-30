@@ -1,122 +1,91 @@
-# HLX-English-Programming
+# HLX‑English‑Programming: Deterministic English Compilation to NLBC/NLVM with HLX Multi‑Target Codegen
 
-English Programming is a research-grade system that compiles controlled English into executable artifacts across edge, cloud, and embedded targets. The stack includes a natural-language front‑end, an intermediate representation (IR), a bytecode virtual machine (NLVM), and HLX, a domain-specific controlled-English layer for real‑time IoT and cyber‑physical systems. In short: write intentions in English, obtain verified, runnable code and artifacts.
+## Abstract
+HLX‑English‑Programming treats controlled English as a first‑class programming language with a compiler and runtime. English programs compile to a binary bytecode (NLBC) executed by a deterministic virtual machine (NLVM). For real‑time and IoT/edge systems, HLX (Human Language eXecution) lifts English specifications into deployable artifacts: Rust/FreeRTOS scaffolds for MCUs, edge container manifests, and W3C Web of Things Thing Descriptions. spaCy‑driven normalization is mandatory, enabling robust, flexible phrasing while preserving determinism.
 
-## Vision and Scope
+## Key Contributions (What is path‑breaking)
+- Deterministic English→NLBC→NLVM pipeline: not prompt‑to‑code, but a stable, reproducible compiler/runtime contract.
+- Mandatory spaCy normalization (en_core_web_sm): controlled English enriched by lemmatization and synonym canonicalization to handle complex, natural phrasing before compilation.
+- HLX multi‑target generation: one English source produces MCU/edge/standards artifacts, aligning natural language intent with deployable software/hardware targets.
+- Real‑time semantics and safety envelopes: timing, watchdogs, rate‑limits, and unit‑aware checks expressed directly in controlled English.
 
-- Express complex programs in precise English while preserving formal semantics.
-- Compile to multiple targets: NLVM bytecode for rapid execution, Rust/FreeRTOS scaffolds for embedded MCUs, edge container manifests for gateways, and interoperable W3C WoT Thing Descriptions.
-- Integrate real-time data streams, stateful policies, and safety envelopes for industrial, healthcare, and smart‑city deployments.
-
-## Primary Pipeline (English → NLBC Binary → NLVM)
-
+## System Architecture
 ```
-English program (.nl) → Compiler → NLBC binary (.nlc) → NLVM execution
-
-HLX spec (.hlx) → HLX generators → Rust/FreeRTOS, Edge manifests, WoT TD → downstream target binaries
+English (.nl) ──► spaCy normalization ──► parsing & semantic checks ──► IR ──► NLBC (binary)
+                                                                     └─► HLX generators ► {rtos.rs, edge_manifest.json, thing_description.json}
+NLBC (binary) ──► NLVM deterministic execution (capability‑gated I/O, op/time guards)
 ```
+- English Front‑End: controlled English with spaCy normalization for resilient phrasing.
+- IR (secondary, internal): used for analysis/transformations; public artifact is NLBC.
+- NLBC (primary binary): compact module format with constants, symbols, code, functions, and classes; viewable via disassembler.
+- NLVM (primary runtime): executes NLBC deterministically; observability via traces and disassembly.
+- HLX Generators: produce Rust/FreeRTOS scaffolds, edge manifests, and WoT TDs for deployment.
 
-- **English→NLBC Compiler (primary)**: Translates controlled English directly to NLBC, a compact binary bytecode. See `english_programming/run_english.py` for CLI flags including disassembly.
-- **NLVM (primary runtime)**: Executes NLBC deterministically with capability‑gated I/O and execution guards. See `english_programming/src/vm/improved_nlvm.py`.
-- **IR (secondary, internal)**: We maintain an internal IR to support analysis/transformations. It is not the primary public artifact; the public contract is NLBC and HLX outputs.
-- **HLX Generators**: Produce deployable artifacts for embedded and edge: Rust/FreeRTOS skeletons, gateway manifests, and W3C WoT TDs.
+## spaCy in the Pipeline (Mandatory)
+- Install: `pip install -r requirements.txt && make nlp-model`
+- Role: lemmatization/synonym canonicalization, normalization of nested conditions and variants; improves robustness without adding runtime nondeterminism.
+- Enforcement: the toolchain auto‑loads (or one‑time downloads) `en_core_web_sm`; compilation fails fast if unavailable.
 
-## HLX: Controlled‑English for Real‑Time IoT/Edge
-
-HLX models sensors, actuators, timing constraints, and policies in strict English with a well‑defined grammar.
-
-- Outputs:
-  - `hlx_out/rtos.rs`: Rust/FreeRTOS skeleton for MCU tasks, timers, and ISR-safe queues
-  - `hlx_out/edge_manifest.json`: Edge module/container manifest for gateway deployment
-  - `hlx_out/thing_description.json`: W3C WoT Thing Description for interoperability
-- Runtime integrations:
-  - Local simulation and policy testing
-  - MQTT/CoAP connectors for real‑time telemetry and command/control
-  - Deterministic scheduling hints and rate‑monotonic patterns for control loops
-
-See the dedicated HLX README under `english_programming/hlx/README.md` for grammar, timing, and safety details.
-
-## Real‑Time Data, Streaming, and Binary Execution Advantages
-
-- Direct binary execution via NLBC minimizes interpretive overhead and enables tight execution guards.
-- Ingestion: MQTT/CoAP/WebSockets into NLVM/HLX edge modules with deterministic handlers.
-- Semantics: event‑time vs processing‑time, windowing, and stateful English policies.
-- Safety: bounds checks, rate limits, watchdogs, and fail‑safe transitions expressed in controlled English.
-- Observability: structured logs, disassembly tooling, traces tied back to English source.
-
-## Representative Use Cases
-
-- Industrial automation (process control, predictive maintenance)
-- Healthcare monitoring (alarm policies, privacy‑aware streaming)
-- Smart cities (traffic policies, energy optimization, incident response)
-- Robotics and drones (mission plans, safety corridors)
-- Finance and ops (natural‑language runbooks with auditable execution)
-
-## Quick Start
-
-Run an English program end‑to‑end (compile → execute):
-
+## Primary Pipeline (English → NLBC → NLVM)
+- Compile and run end‑to‑end:
 ```bash
 python integrated_test_runner.py english_programming/examples/basic_operations.nl
 ```
-
-Generate HLX artifacts and run a demo:
-
+- Disassemble an NLBC module:
 ```bash
-python -m english_programming.hlx.cli english_programming/examples/boiler_a.hlx --out hlx_out
-python -m english_programming.hlx.run_demo english_programming/examples/boiler_a.hlx
+python -m english_programming.bin.nlbc_disassembler path/to/program.nlbc
 ```
 
-Optional MQTT edge module (if broker available):
+## HLX: Controlled‑English for Real‑Time IoT/Edge
+- Outputs:
+  - `hlx_out/rtos.rs`: Rust/FreeRTOS skeleton for MCU tasks/timers/queues
+  - `hlx_out/edge_manifest.json`: container manifest for gateways
+  - `hlx_out/thing_description.json`: W3C WoT TD for interoperability
+- Runtime integrations: local simulation, MQTT/CoAP connectors, deterministic scheduling hints.
+- See root `README-HLX.md` and `english_programming/hlx/README.md`.
 
-```bash
-python -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://localhost
-```
+## What You Can Express (Complexity at a glance)
+- EPL (general): variables, lists/maps/sets, nested conditionals, loops, file I/O, HTTP, async, OOP sketches.
+- HLX (IoT/edge): sensors, actuators, timing (period/deadline/jitter), hysteresis/cooldown, windowed storage, multi‑sensor correlation, event vs processing time.
+- The web UI (`ui/english-ui/src/App.tsx`) includes HLX examples (overpressure, HVAC hysteresis, leak detection, hospital CO₂) and EPL examples (BFS, Kahn topological sort sketches, CSV/YAML round‑trip, OOP).
 
-## spaCy Integration (Mandatory)
+## Positioning (Straight up, no sugar‑coating)
+- Unique: a deterministic compiler + VM for English, plus HLX multi‑target generation. Most alternatives either translate to a different language or rely on probabilistic LLMs.
+- Overlap exists: English‑like systems (Inform 7, specs like Attempto/Gherkin) and LLM codegen. They either constrain English into domain‑specific niches or don’t define a native bytecode/VM contract.
+- Hard problem: ambiguity in natural language. We mitigate with controlled English, spaCy normalization, explicit errors, and deterministic semantics.
+- Honest reality: NLBC is VM bytecode (not native machine code). Native MCU binaries arise downstream when compiling HLX Rust scaffolds with board HALs.
+- If done right: this is genuinely paradigm‑shifting—an “English JVM” with real‑time reach.
 
-- We require spaCy with the `en_core_web_sm` model for robust normalization and synonym handling across EPL and HLX.
-- Install:
-  ```bash
-  pip install -r requirements.txt
-  make nlp-model
-  ```
-- The compiler automatically loads the model and will attempt a one‑time download if missing.
-- Benefits: better intent normalization, resilient parsing of complex, nested conditions, and improved HLX rule matching without added runtime cost.
+## Limitations and Roadmap
+- Formalization: publish NLBC spec and conformance tests.
+- Hardware: provide reference HAL bindings for 1–2 MCU boards (see `english_programming/hlx/README_boards.md`).
+- Evidence: add micro‑benchmarks, case studies, timing/jitter evaluations for HLX loops.
+- Semantics: extend formal grammar and unit/contract checks (HLX safety model).
 
 ## Repository Map
+- `english_programming/src`: compiler, NLVM, interfaces, extensions
+- `english_programming/hlx`: HLX grammar, CLI, edge module, generators
+- `english_programming/examples`: `.nl` and `.hlx` examples
+- `hlx_out/`: generated outputs
+- `ui/english-ui`: web playground
 
-- `english_programming/src`: compiler, NLVM, interfaces, and extensions
-- `english_programming/hlx`: HLX grammar, CLI, edge module, and generators
-- `english_programming/examples`: example `.nl` and `.hlx` programs
-- `hlx_out/`: generated outputs (ignored by VCS)
-- `ui/english-ui`: experimental React/TypeScript UI
+## Install & Run
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+make nlp-model
+python integrated_test_runner.py english_programming/examples/basic_operations.nl
+python -m english_programming.hlx.cli english_programming/examples/boiler_a.hlx --out hlx_out
+```
 
-## Differentiation and Impact
+## Related Work
+See `docs/RELATED_WORK.md` for specific comparisons (Inform 7; Attempto/Gherkin; Wolfram; LLM codegen).
 
-- Unlike ML code generators (e.g., prompt-to-code), our compiler is deterministic and produces a verifiable binary (NLBC) with a stable VM contract.
-- Unlike natural-language DSLs that target a single environment, HLX produces multi‑target artifacts (MCU Rust/FreeRTOS, edge manifests, WoT TD) from one source of truth.
-- Compared to historical natural-language languages (e.g., domain‑specific or interactive notebooks), this system offers end‑to‑end compilation to binary, real‑time semantics, and cross‑domain safety constructs.
-
-## Open Source and Governance
-
-- License: MIT (see `LICENSE`)
-- Contributing: see `CONTRIBUTING.md`
-- Code of Conduct: see `CODE_OF_CONDUCT.md`
-- Security: see `SECURITY.md` for vulnerability reporting
-
-## Related Work and Positioning
-
-- Inform 7: English‑like interactive fiction compiling to VM bytecode. Our scope extends to general computation and real‑time IoT with multi‑target codegen.
-- Attempto/Gherkin: controlled English for specs/tests. We compile to executable NLBC and HLX deployables.
-- LLM codegen: probabilistic; no stable bytecode/VM contract. We are a deterministic compiler with NLBC and NLVM.
-
-See `docs/RELATED_WORK.md` for a deeper comparison.
-
-## HLX Boards
-
-See `english_programming/hlx/README_boards.md` for wiring `hlx_out/rtos.rs` into a board HAL to produce native MCU firmware.
+## License, Governance, Security
+- License: MIT (`LICENSE`)
+- Contributing: `CONTRIBUTING.md`
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security: `SECURITY.md`
 
 ## Citation
-
 If you use this project in academic work, please cite it as “HLX‑English‑Programming (2025)”.
