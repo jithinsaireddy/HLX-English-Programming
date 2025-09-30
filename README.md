@@ -49,7 +49,7 @@ python -m english_programming.bin.nlbc_disassembler path/to/program.nlbc
 - HLX (IoT/edge): sensors, actuators, timing (period/deadline/jitter), hysteresis/cooldown, windowed storage, multi‑sensor correlation, event vs processing time.
 - The web UI (`ui/english-ui/src/App.tsx`) includes HLX examples (overpressure, HVAC hysteresis, leak detection, hospital CO₂) and EPL examples (BFS, Kahn topological sort sketches, CSV/YAML round‑trip, OOP).
 
-## Positioning (Straight up, no sugar‑coating)
+## Positioning
 - Unique: a deterministic compiler + VM for English, plus HLX multi‑target generation. Most alternatives either translate to a different language or rely on probabilistic LLMs.
 - Overlap exists: English‑like systems (Inform 7, specs like Attempto/Gherkin) and LLM codegen. They either constrain English into domain‑specific niches or don’t define a native bytecode/VM contract.
 - Hard problem: ambiguity in natural language. We mitigate with controlled English, spaCy normalization, explicit errors, and deterministic semantics.
