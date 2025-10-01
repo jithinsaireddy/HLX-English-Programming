@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{Evaluation Summary Across HLX Scenarios. Latency is end-to-end decision latency from sensor sample to actuation/event.}
+\label{tab:evaluation}
+\begin{tabular}{lrrrrrr}
+\hline
+\textbf{Scenario} & \textbf{Rate (Hz)} & \textbf{p50 (ms)} & \textbf{p99 (ms)} & \textbf{CPU (\%)} & \textbf{RAM (\%)} & \textbf{Identical Runs?} \\
+\hline
+Boiler -- Overpressure & 5 & 2400 & 2400 & 12.5 & 53.3 & No \\
+HVAC -- Thermostat     & 1 & 11000 & 11000 & 6.2 & 53.5 & No \\
+Tank -- Imbalance      & 2 & 5000 & 5000 & 33.3 & 53.5 & No \\
+Pipeline -- Leak       & 5 & 400 & 400 & 50.0 & 53.0 & No \\
+Hospital -- CO$_2$     & 2 & 5500 & 5500 & 28.6 & 53.0 & No \\
+Freezer -- Cold-chain  & 1 & 2000 & 2000 & 33.3 & 53.1 & No \\
+\hline
+\end{tabular}
+\end{table}
