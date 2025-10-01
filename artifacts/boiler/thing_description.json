@@ -1,0 +1,42 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Boiler-A",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "pressure": {
+      "type": "number",
+      "unit": "kPa"
+    }
+  },
+  "actions": {
+    "relief_valve": {}
+  },
+  "base": "mqtt://plant/boilerA",
+  "forms": [
+    {
+      "href": "mqtt://plant/boilerA",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Boiler-A/sensor/+",
+        "action": "Boiler-A/actuator/+"
+      }
+    }
+  ]
+}

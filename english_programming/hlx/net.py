@@ -6,6 +6,7 @@ def generate_wot_td(spec: HLXSpec) -> str:
     thing = spec.thing
     td = {
         "@context": ["https://www.w3.org/2019/wot/td/v1"],
+        "@type": ["Thing"],
         "title": thing.name,
         "security": ["basic_sc"],
         "securityDefinitions": {

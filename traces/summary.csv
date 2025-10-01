@@ -1,0 +1,7 @@
+scenario,p50_trigger_ms,p99_trigger_ms,cpu_pct,mem_pct,repro_identical,td_valid
+boiler,2400,2400,12.5,53.3,False,True
+hvac,11000,11000,6.2,53.5,False,True
+tank_flow,5000,5000,33.3,53.5,False,True
+pipeline_leak,400,400,50.0,53.0,False,True
+hospital_co2,5500,5500,28.6,53.0,False,True
+freezer,2000,2000,33.3,53.1,False,True

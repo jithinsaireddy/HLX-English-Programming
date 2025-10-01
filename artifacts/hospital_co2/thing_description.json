@@ -1,0 +1,42 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Room-312",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "co2_ppm": {
+      "type": "number",
+      "unit": "ppm"
+    }
+  },
+  "actions": {
+    "vent_damper": {}
+  },
+  "base": "mqtt://hospital/room312",
+  "forms": [
+    {
+      "href": "mqtt://hospital/room312",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Room-312/sensor/+",
+        "action": "Room-312/actuator/+"
+      }
+    }
+  ]
+}

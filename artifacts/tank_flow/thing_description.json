@@ -1,0 +1,47 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Tank-7",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "flow_in": {
+      "type": "number",
+      "unit": "Lps"
+    },
+    "flow_out": {
+      "type": "number",
+      "unit": "Lps"
+    }
+  },
+  "actions": {
+    "inlet_valve": {},
+    "outlet_valve": {}
+  },
+  "base": "mqtt://plant/water/T7",
+  "forms": [
+    {
+      "href": "mqtt://plant/water/T7",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Tank-7/sensor/+",
+        "action": "Tank-7/actuator/+"
+      }
+    }
+  ]
+}

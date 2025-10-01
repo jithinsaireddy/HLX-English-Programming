@@ -1,0 +1,26 @@
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "HVAC-Unit-42_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://building/A3/HVAC42"
+        }
+      }
+    }
+  ]
+}

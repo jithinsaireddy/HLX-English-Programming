@@ -1,0 +1,43 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "HVAC-Unit-42",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "temp": {
+      "type": "number",
+      "unit": "C"
+    }
+  },
+  "actions": {
+    "heater": {},
+    "cooler": {}
+  },
+  "base": "mqtt://building/A3/HVAC42",
+  "forms": [
+    {
+      "href": "mqtt://building/A3/HVAC42",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "HVAC-Unit-42/sensor/+",
+        "action": "HVAC-Unit-42/actuator/+"
+      }
+    }
+  ]
+}

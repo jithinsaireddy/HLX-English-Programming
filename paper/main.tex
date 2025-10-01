@@ -18,7 +18,7 @@
 \maketitle
 
 \begin{abstract}
-We present \emph{HLX}, a controlled-English programming layer for Internet-of-Things (IoT) and cyber-physical systems that compiles human-readable rules into deployable artifacts: real-time operating system (RTOS) code (Rust/FreeRTOS or Zephyr C), edge deployment manifests, and W3C Web of Things (WoT) Thing Descriptions (TD). HLX is built on a general \emph{English Programming Language} (EPL) and executes deterministically by construction: timed predicates (e.g., \emph{``for 600\,ms''}), hysteresis, and cooldown are compiled to explicit schedules and state machines, yielding reproducible behavior and auditable logs. Across representative device policies—industrial boiler overpressure, HVAC thermostat hysteresis, multi-sensor imbalance, pipeline leak detection, and hospital CO$_2$ alerts—HLX demonstrates (i) deterministic rule execution with traceability to source lines, (ii) low jitter on RTOS targets, and (iii) standards-based interop via automatically generated WoT TDs. We release the specification, compiler, examples, and evaluation scripts.
+We present HLX, a controlled-English language and compiler for Internet-of-Things (IoT) and cyber-physical systems that translates human-readable policies into deployable artifacts: real-time operating system (RTOS) code (Rust/FreeRTOS or Zephyr C), edge deployment manifests, and W3C Web of Things (WoT) Thing Descriptions (TD 1.1). Built atop a general English Programming Language (EPL), HLX provides deterministic execution by construction: timed predicates (e.g., “for 600\,ms”), hysteresis, and cooldown are compiled to explicit schedules and state machines, yielding reproducible behavior and auditable logs. Across representative device policies—industrial boiler overpressure, HVAC thermostat hysteresis, multi-sensor imbalance, pipeline leak detection, and hospital CO$_2$ alerts—HLX shows (i) deterministic rule execution with source-line traceability, (ii) low decision jitter on RTOS targets, and (iii) standards-based interop via automatically generated WoT TDs. We release the specification, compiler, examples, and evaluation scripts.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -26,9 +26,9 @@ Controlled Natural Language, Internet of Things, Real-Time Operating Systems, We
 \end{IEEEkeywords}
 
 \section{Introduction}
-Programming IoT/edge systems remains split between (1) end-user \emph{trigger–action} rules with limited timing semantics and (2) low-level firmware requiring specialized expertise. Natural language interfaces via LLMs can generate code, but introduce stochasticity and weak auditability. We ask: \emph{Can we execute precise English directly and deterministically for IoT control while emitting portable, standards-based artifacts?}
+Programming IoT/edge systems spans two extremes: (1) end-user trigger–action rules with limited timing semantics and weak guarantees, and (2) low-level firmware requiring specialized expertise. Natural-language code generation via LLMs is convenient, but introduces stochasticity and weak auditability. We ask: \emph{Can precise English be executed deterministically for IoT control, while producing portable, standards-based artifacts?}
 
-We answer with \textbf{HLX}, a controlled-English language for devices, sensors, actuators, timing windows, hysteresis, cooldown, and side effects (publish/store). HLX compiles to RTOS tasks/ISRs and generates WoT Thing Descriptions (TD 1.1) for interop. HLX builds atop our general \textbf{EPL}/NLVM foundation but is domain-focused on IoT. Unlike assistant languages~\cite{ThingTalk22,GeniePLDI19} or trigger–action platforms~\cite{UrIFTTT16,BrackenburyTAP19}, HLX provides deterministic execution and explicit timing on resource-constrained devices, and unlike CNLs used for logic/specification~\cite{KuhnCNL14,ACEManual}, HLX targets deployable embedded code and WoT descriptors~\cite{WoT11}.
+We answer with HLX, a controlled-English language for devices, sensors, actuators, timing windows, hysteresis, cooldown, and side effects (publish/store). HLX compiles to RTOS tasks/ISRs and generates WoT Thing Descriptions (TD 1.1) for interop. HLX builds atop a general EPL/NLVM foundation but is domain-focused on IoT. Unlike assistant languages~\cite{ThingTalk22,GeniePLDI19} or trigger–action platforms~\cite{UrIFTTT16,BrackenburyTAP19}, HLX provides deterministic execution and explicit timing on resource-constrained devices; unlike CNLs for logic/specification~\cite{KuhnCNL14,ACEManual}, HLX targets deployable embedded code and WoT descriptors~\cite{WoT11}.
 
 \textbf{Contributions.} (1) HLX: a controlled-English language with real-time idioms (windows, hysteresis, cooldown) and fail-closed disambiguation; (2) a compiler that emits RTOS code (Rust/FreeRTOS, Zephyr C), edge manifests, and WoT TDs; (3) deterministic execution and traceability with source-line mapping; (4) an evaluation on realistic scenarios with latency/jitter, resource usage, and interop validation.
 
@@ -93,6 +93,16 @@ We evaluate determinism, latency, and interop across six scenarios:
 
 \noindent\textbf{Result Summary.} HLX executes deterministically with low jitter on RTOS targets, prevents repeated/oscillatory actions under hysteresis/cooldown, and produces WoT TDs that validate against the 1.1 specification.
 
+\subsection{Results Table}
+Table~\ref{tab:scenarios} summarizes key metrics gathered by our experiments scripts (see artifact package). Where a metric is not applicable or pending hardware runs, we mark it as ``—''.
+
+\input{paper/table_evaluation.tex}
+
+\subsection{Pipeline Diagram}
+Figure~\ref{fig:pipeline} illustrates the HLX toolchain: controlled-English input compiles to RTOS code, edge manifests, and WoT TDs. The EPL/NLVM path provides a deterministic VM for host execution and testing.
+
+\input{paper/figure_pipeline.tex}
+
 \section{Discussion}
 \textbf{When HLX is preferable.} Time-bound device policies with stability requirements, auditable behavior, and standards-based interop. \textbf{Limitations.} Complex multi-device coordination and rich computations are intentionally outside the core HLX (can be offloaded to services). \textbf{EPL/NLVM foundation.} Our general EPL compiles to a typed IR and NLVM for host execution; HLX leverages EPL’s parsing/checking strategies but targets device deployment.
 
@@ -107,6 +117,9 @@ CNLs~\cite{KuhnCNL14,ACEManual}; English-like/assistant languages~\cite{InformSi
 
 \section{Conclusion}
 HLX demonstrates that controlled English can be compiled into deterministic, auditable, and interoperable IoT programs. By emitting RTOS code and WoT TDs from a single source, HLX bridges human-readable policy authoring and deployable device software. We release the language, compiler, examples, and evaluation scripts to foster reproducible research.
+
+\section*{Reproducibility Artifacts}
+We provide a complete artifact package containing HLX outputs (RTOS scaffolds, manifests, TDs), JSON traces, TD validation results, benchmark summaries, and LaTeX sources. See `README\_ARTIFACTS.md` and `docs/replication.md` for step-by-step instructions. The exact version of code and data used in this paper is tagged `v1.0-paper` in the public repository.
 
 \section*{Acknowledgment}
 We thank the open-source communities behind Zephyr, FreeRTOS, and W3C WoT.

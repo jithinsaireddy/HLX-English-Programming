@@ -1,0 +1,46 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Pipe-12",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "pressure": {
+      "type": "number",
+      "unit": "kPa"
+    },
+    "pressure_downstream": {
+      "type": "number",
+      "unit": "kPa"
+    }
+  },
+  "actions": {
+    "main_valve": {}
+  },
+  "base": "mqtt://field/pipe12",
+  "forms": [
+    {
+      "href": "mqtt://field/pipe12",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Pipe-12/sensor/+",
+        "action": "Pipe-12/actuator/+"
+      }
+    }
+  ]
+}
