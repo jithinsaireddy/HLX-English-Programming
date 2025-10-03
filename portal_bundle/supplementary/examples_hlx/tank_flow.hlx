@@ -1,0 +1,16 @@
+Device "Tank-7" at mqtt://plant/water/T7
+Sensor "level" unit % period 500 ms
+Sensor "flow_in" unit Lps period 500 ms
+Sensor "flow_out" unit Lps period 500 ms
+Actuator "inlet_valve" actions open, close
+Actuator "outlet_valve" actions open, close
+
+If level >= 95 for 500 ms then
+  close outlet_valve
+  publish event "overflow_protect"
+If level <= 10 for 500 ms then
+  close outlet_valve
+  publish event "dry_protect"
+If flow_in > flow_out for 500 ms then
+  store last 10000 ms of flow_in, flow_out to table "imbalance"
+  publish event "imbalance_detected"

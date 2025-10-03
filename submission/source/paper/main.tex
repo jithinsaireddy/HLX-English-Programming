@@ -16,22 +16,22 @@
 \title{HLX on NLVM: Deterministic Execution of Controlled English for IoT with RTOS and Web of Things Artifacts}
 
 \author{Jithin Pothireddy%
-\thanks{Manuscript submitted October 2, 2025. Author is an independent researcher, Seattle, USA.  Email: jithinpothireddy21@gmail.com.}}
+\thanks{Manuscript submitted October 2, 2025. Author has no institutional affiliation (independent researcher). Corresponding author: jithinpothireddy21@gmail.com.}}
 
 \maketitle
 
 \begin{abstract}
-We present \textbf{Human-Language eXecution (HLX)}, a controlled-English language and compiler for Internet of Things (IoT) and cyber-physical systems, covering devices, sensors, and actuators, that translates human-readable policies into deployable artifacts: real-time operating system (RTOS) code (Rust/FreeRTOS or Zephyr C), edge deployment manifests, and W3C Web of Things (WoT) Thing Descriptions (TD 1.1). Built atop a general English Programming Language (EPL), HLX provides deterministic execution by construction: timed predicates (e.g., “for 600\,ms”), hysteresis, and cooldown are compiled to explicit schedules and state machines, yielding reproducible behavior and auditable logs. Across representative device policies—industrial boiler overpressure, HVAC thermostat hysteresis, multi-sensor imbalance, pipeline leak detection, and hospital CO$_2$ alerts—HLX shows (i) deterministic rule execution with source-line traceability, (ii) low decision jitter on RTOS targets, and (iii) standards-based interop via automatically generated WoT TDs. We release the specification, compiler, examples, and evaluation scripts.
+We present HLX, a controlled-English language and compiler for Internet of Things (IoT) and cyber-physical systems that translates human-readable policies into deployable artifacts: real-time operating system (RTOS) code (Rust/FreeRTOS or Zephyr C), edge deployment manifests, and W3C Web of Things (WoT) Thing Descriptions (TD 1.1). Built atop a general English Programming Language (EPL), HLX provides deterministic execution by construction: timed predicates (e.g., “for 600\,ms”), hysteresis, and cooldown are compiled to explicit schedules and state machines, yielding reproducible behavior and auditable logs. Across representative device policies—industrial boiler overpressure, HVAC thermostat hysteresis, multi-sensor imbalance, pipeline leak detection, and hospital CO$_2$ alerts—HLX shows (i) deterministic rule execution with source-line traceability, (ii) low decision jitter on RTOS targets, and (iii) standards-based interop via automatically generated WoT TDs. We release the specification, compiler, examples, and evaluation scripts.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Controlled Natural Language, Internet of Things, Real-Time Operating Systems, Web of Things, Programming Languages, Cyber-Physical Systems, Determinism
+Controlled Natural Language, Internet of Things, Real-Time Operating Systems, Web of Things, Programming Languages, Cyber-Physical Systems, Determinism.
 \end{IEEEkeywords}
 
 \section{Introduction}
 Programming IoT/edge systems spans two extremes: (1) end-user trigger–action rules with limited timing semantics and weak guarantees, and (2) low-level firmware requiring specialized expertise. Natural-language code generation via LLMs is convenient, but introduces stochasticity and weak auditability. We ask: \emph{Can precise English be executed deterministically for IoT control, while producing portable, standards-based artifacts?}
 
-We answer with HLX, a controlled-English language for devices, sensors, actuators, timing windows, hysteresis, cooldown, and side effects (publish/store). HLX compiles to RTOS tasks/interrupt service routines (ISRs) and generates WoT Thing Descriptions (TD 1.1) for interop. HLX builds atop a general EPL and the Natural Language Virtual Machine (NLVM) foundation but is domain-focused on IoT. Unlike assistant languages~\cite{ThingTalk22,GeniePLDI19} or trigger–action platforms~\cite{UrIFTTT16,BrackenburyTAP19}, HLX provides deterministic execution and explicit timing on resource-constrained devices; unlike CNLs for logic/specification~\cite{KuhnCNL14,ACEManual}, HLX targets deployable embedded code and WoT descriptors~\cite{WoT11}.
+We answer with HLX, a controlled-English language for devices, sensors, actuators, timing windows, hysteresis, cooldown, and side effects (publish/store). HLX compiles to RTOS tasks/ISRs and generates WoT Thing Descriptions (TD 1.1) for interop. HLX builds atop a general EPL/NLVM foundation but is domain-focused on IoT. Unlike assistant languages~\cite{ThingTalk22,GeniePLDI19} or trigger–action platforms~\cite{UrIFTTT16,BrackenburyTAP19}, HLX provides deterministic execution and explicit timing on resource-constrained devices; unlike CNLs for logic/specification~\cite{KuhnCNL14,ACEManual}, HLX targets deployable embedded code and WoT descriptors~\cite{WoT11}.
 
 \textbf{Contributions.} (1) HLX: a controlled-English language with real-time idioms (windows, hysteresis, cooldown) and fail-closed disambiguation; (2) a compiler that emits RTOS code (Rust/FreeRTOS, Zephyr C), edge manifests, and WoT TDs; (3) deterministic execution and traceability with source-line mapping; (4) an evaluation on realistic scenarios with latency/jitter, resource usage, and interop validation.
 
@@ -73,7 +73,7 @@ If pressure > 180 kPa for 600 ms then
 \noindent \textbf{Semantics.} HLX compiles timed predicates to windowed detectors with explicit timers; hysteresis and cooldown maintain internal state to avoid chatter. Ambiguity (unknown device/action) is a compile error (fail-closed). Units and time dimensions are checked statically.
 
 \section{Compiler and Artifacts}
-\textbf{Lowering to RTOS.} HLX rules compile to tasks/interrupt service routines (ISRs), timers, and queues. For FreeRTOS we generate Rust scaffolding; for Zephyr we generate C (main entry, \texttt{k\_timer} callbacks). The same HLX source yields:
+\textbf{Lowering to RTOS.} HLX rules compile to tasks/ISRs, timers, and queues. For FreeRTOS we generate Rust scaffolding; for Zephyr we generate C (main entry, \texttt{k\_timer} callbacks). The same HLX source yields:
 \begin{enumerate}
   \item RTOS code (\texttt{rtos.rs} or \texttt{zephyr\_main.c})
   \item Edge/gateway manifest (e.g., MQTT topics, deployment metadata)
@@ -85,13 +85,10 @@ If pressure > 180 kPa for 600 ms then
 \section{Implementation}
 We implement a single-pass parser for HLX with typed AST, a checker for units/time, and backends for RTOS, manifests, and TD. The web demo provides “Compile” (generate artifacts) and “Run Demo” (simulate sensor streams, print logs). Artifacts are downloadable and shareable for review.
 
-\noindent \textbf{NLP normalization with spaCy.} We perform a deterministic, lightweight normalization step before parsing using spaCy\footnotemark{} with the English pipeline \texttt{en\_core\_web\_sm}. The step lemmatizes tokens and canonicalizes frequent comparative phrases (e.g., ``at least'' $\rightarrow$ $\geq$, ``more than'' $\rightarrow$ $>$), while leaving quoted strings verbatim. Normalization precedes syntax/semantic checks and does not modify numeric thresholds, units, or time windows; any remaining ambiguity fails closed. To ensure reproducibility and platform independence, we pin both spaCy and the model version, and we disable optional components not required by our rules. When the model is unavailable, HLX uses a conservative regex/lookup fallback that preserves determinism. See the spaCy lemmatizer and pipeline/versioning guidance for details, and our artifact’s \texttt{requirements.txt} for exact package hashes~\cite{spacy-lemmatizer,spacy-v3,spacy-models,spacy-101,arr-checklist,spacy-software}.
-\footnotetext{Exact versions are listed in the artifact bundle.}
-
 \section{Evaluation}
 We evaluate determinism, latency, and interop across six scenarios:
 
-\noindent\textbf{Scenarios.} Boiler -- Overpressure; HVAC -- Thermostat (hysteresis/cooldown); Water Tank -- Imbalance (multi-sensor); Pipeline -- Leak (differential pressure); Hospital -- CO$_2$ (fast/slow); Cold-chain -- Freezer (fast/slow).
+\noindent\textbf{Scenarios.} Boiler–Overpressure; HVAC–Thermostat (hysteresis/cooldown); Water Tank–Imbalance (multi-sensor); Pipeline–Leak (differential pressure); Hospital–CO$_2$ (fast/slow); Cold-chain–Freezer (fast/slow).
 
 \noindent\textbf{Metrics.} (1) run-to-run equivalence (identical traces); (2) decision latency/jitter (p50/p99); (3) CPU/RAM footprint; (4) number of prevented oscillations (hysteresis); (5) WoT TD validation success.
 
@@ -100,7 +97,7 @@ We evaluate determinism, latency, and interop across six scenarios:
 \noindent\textbf{Result Summary.} HLX executes deterministically with low jitter on RTOS targets, prevents repeated/oscillatory actions under hysteresis/cooldown, and produces WoT TDs that validate against the 1.1 specification.
 
 \subsection{Results Table}
-Table~\ref{tab:scenarios} summarizes key metrics gathered by our experiment scripts (see artifact package). Where a metric is not applicable or pending hardware runs, we mark it as ``—''.
+Table~\ref{tab:scenarios} summarizes key metrics gathered by our experiments scripts (see artifact package). Where a metric is not applicable or pending hardware runs, we mark it as ``—''.
 
 \input{paper/table_evaluation.tex}
 

@@ -1,0 +1,7 @@
+Device "Freezer-7" at mqtt://plant/freezer7
+Sensor "temp_c" unit C period 1000 ms
+Actuator "alarm" actions on, off
+
+If temp_c > -10 C for 3000 ms with hysteresis 10 % and cooldown 30000 ms then
+  on alarm
+  publish event "freezer_temp_high" with timestamp and value

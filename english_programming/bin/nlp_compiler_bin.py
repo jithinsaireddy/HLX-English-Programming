@@ -453,7 +453,7 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             continue
 
         # otherwise compile into main (with simple control-flow lowering)
-            lowered = _compile_stmt_with_cf(line, constants, symbols)
+        lowered = _compile_stmt_with_cf(line, constants, symbols)
         if lowered is not None:
             main_instrs += lowered
             instr_line_map.extend([i+1] * len(lowered))

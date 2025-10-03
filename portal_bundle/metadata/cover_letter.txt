@@ -1,0 +1,36 @@
+October 2, 2025
+
+Editor-in-Chief
+IEEE Internet of Things Journal (IoT-J)
+
+Subject: Regular Paper Submission — “HLX on NLVM: Deterministic Execution of Controlled English for IoT with RTOS and Web of Things Artifacts”
+
+Dear Editor-in-Chief,
+
+Please consider our manuscript entitled “HLX on NLVM: Deterministic Execution of Controlled English for IoT with RTOS and Web of Things Artifacts” for publication in the IEEE Internet of Things Journal (IoT-J) as a Regular Paper. The paper presents HLX, a controlled-English language and compiler for IoT device control that translates human-readable policies into deployable artifacts: RTOS code (Rust/FreeRTOS or Zephyr C), edge deployment manifests, and W3C Web of Things Thing Descriptions (TD 1.1). We demonstrate deterministic execution via timed predicates, hysteresis, and cooldown, with traceability from source lines to runtime events, and we evaluate determinism, latency, resource footprint, and standards-based interoperability across representative scenarios.
+
+Contribution and significance:
+• A controlled-English DSL (HLX) with explicit timing and stability constructs for IoT control.
+• A compiler that emits deployable RTOS code and WoT TDs from a single source of truth, improving auditability and interoperability.
+• Evidence of deterministic behavior and low jitter on constrained RTOS targets, with artifact-backed reproducibility.
+
+Originality and prior publication:
+This work is original, has not been published previously, and is not under consideration elsewhere. All authors approve this submission and agree to the journal’s policies.
+
+Artifacts and reproducibility:
+We provide a public artifact package with examples, generated RTOS scaffolds, WoT TDs, validation logs, traces, and replication instructions (see README_ARTIFACTS.md and docs/replication.md). The exact version used in this manuscript is tagged v1.0-paper.
+
+Suggested reviewers (no conflict of interest):
+We propose 3–5 reviewers across WoT/TDs, embedded RTOS, and controlled natural languages, each from different institutions and with work emails. Details (name, affiliation, email, expertise, justification, COI statement) are provided in reviewers.csv. We confirm no conflicts (no shared institution; no recent coauthorship/advisor/advisee/family ties).
+
+Corresponding author:
+Jithin Pothireddy (Independent Researcher)
+Email: jithinpothireddy21@gmail.com
+
+Access model:
+Traditional (non-OA) preferred. We acknowledge over-length charges if applicable.
+
+Sincerely,
+
+Jithin Pothireddy
+Independent Researcher

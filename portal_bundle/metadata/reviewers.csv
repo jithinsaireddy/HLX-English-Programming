@@ -1,0 +1,6 @@
+Name,Affiliation,Email,Expertise,Why suggested,COI statement
+[Add Reviewer 1],University/Company,Country,[work_email]@[domain],WoT TD 1.1; IoT systems,"Expert on WoT TD toolchain; different institution; no prior collaborations",No COI (not same institution; no coauthorship/mentorship/family ties)
+[Add Reviewer 2],University/Company,Country,[work_email]@[domain],Embedded RTOS; Zephyr/FreeRTOS,"RTOS timing and scheduling expertise; published on embedded control",No COI (not same institution; no coauthorship/mentorship/family ties)
+[Add Reviewer 3],University/Company,Country,[work_email]@[domain],CNL/DSL; End-user programming,"CNL + DSL evaluation expertise; relevant to HLX authoring semantics",No COI (not same institution; no coauthorship/mentorship/family ties)
+[Add Reviewer 4],University/Company,Country,[work_email]@[domain],Edge computing; IoT standards,"Interop and deployments; complements WoT/RTOS coverage",No COI (not same institution; no coauthorship/mentorship/family ties)
+[Add Reviewer 5],University/Company,Country,[work_email]@[domain],Deterministic systems; Verification,"Determinism and verification expertise; fits HLX claims",No COI (not same institution; no coauthorship/mentorship/family ties)

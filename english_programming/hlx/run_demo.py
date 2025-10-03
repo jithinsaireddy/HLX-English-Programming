@@ -39,6 +39,16 @@ def simulate_series(n: int, comparator: str, threshold, period_ms: int, spike_af
                 vals.append(thr - delta)
     return vals
 
+# Backward-compatible helper expected by web_app: simple pressure sequence with a spike
+def simulate_pressure_sequence(n: int, base: float = 150.0, spike_after: int = 10, spike_value: float = 185.0):
+    vals = []
+    for i in range(n):
+        if i >= spike_after:
+            vals.append(spike_value)
+        else:
+            vals.append(base + random.uniform(-2.0, 2.0))
+    return vals
+
 
 def main():
     ap = argparse.ArgumentParser(description='HLX local demo runner')

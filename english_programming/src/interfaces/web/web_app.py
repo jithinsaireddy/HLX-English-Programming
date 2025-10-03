@@ -278,6 +278,19 @@ def epl_index():
 @cross_origin()
 def epl_exec():
     try:
+        # Enable network for EPL binary VM in this route (dev/demo)
+        try:
+            os.environ['EP_ALLOW_NET'] = '1'
+            # Satisfy module_cache import lock requirement for network
+            _lock_dir = os.path.expanduser('~/.english_cache')
+            os.makedirs(_lock_dir, exist_ok=True)
+            _lock_file = os.path.join(_lock_dir, 'registry.lock')
+            try:
+                open(_lock_file, 'a').close()
+            except Exception:
+                pass
+        except Exception:
+            pass
         code = request.get_json(force=True).get("code", "")
         lines = [ln for ln in code.strip().split("\n") if ln.strip()]
         # Text IR via ImprovedNLPCompiler

@@ -1,0 +1,8 @@
+Device "Room-312" at mqtt://hospital/room312
+Sensor "co2_ppm" unit ppm period 500 ms
+Actuator "vent_damper" actions open, close
+
+If co2_ppm > 1200 ppm for 1000 ms with hysteresis 5 % and cooldown 5000 ms then
+  open vent_damper
+  publish event "co2_alert" with timestamp and value
+  store last 60000 ms of co2_ppm to table "air_quality"
