@@ -11,8 +11,8 @@ __pycache__/
 *.so
 
 # Python packaging/build
-build/
-dist/
+# build/
+# dist/
 downloads/
 eggs/
 .eggs/
@@ -76,16 +76,16 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # Frontend build outputs
-ui/english-ui/node_modules/
-ui/english-ui/dist/
-ui/english-ui/build/
+# ui/english-ui/node_modules/
+# ui/english-ui/dist/
+# ui/english-ui/build/
 
 # JS/TS coverage
 coverage/
 
 # Caches/temp
 .cache/
-.tmp/
+tmp/
 
 # Project-specific
 english_programming.egg-info/
@@ -93,3 +93,6 @@ test_output/
 hlx_out/
 modules_cache/
 
+# Allow reading built UI assets for inspection in IDE
+!ui/english-ui/dist/
+!ui/english-ui/dist/**

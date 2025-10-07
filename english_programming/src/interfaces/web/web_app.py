@@ -47,6 +47,10 @@ if os.getenv('EP_LOAD_EXTENSIONS') == '1':
         pass
 
 
+@app.route("/health", methods=["GET"])
+def health():
+    return ("ok", 200)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     output = ""

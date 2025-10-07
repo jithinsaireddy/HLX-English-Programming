@@ -1,0 +1,39 @@
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build/test artifacts
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+coverage/
+
+# Node/Frontend
+node_modules/
+ui/english-ui/node_modules/
+ui/english-ui/.vite/
+ui/english-ui/dist/
+
+# Archives and large extras
+archive/
+archive*/
+
+tests/
+test_output/

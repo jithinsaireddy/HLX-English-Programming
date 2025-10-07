@@ -1,0 +1,812 @@
+Supplementary Compendium — HLX (All Scenarios)
+Generated: Thu Oct  2 22:07:57 PDT 2025
+Guide: Search for '=== Scenario:' markers. Each scenario includes HLX spec, WoT TD (JSON), edge/cloud manifests (JSON), runtime trace (JSON), benchmark metrics (JSON), and TD validation result (JSON).
+
+=== Scenario: freezer ===
+--- HLX Spec (freezer.hlx) ---
+Device "Freezer-7" at mqtt://plant/freezer7
+Sensor "temp_c" unit C period 1000 ms
+Actuator "alarm" actions on, off
+
+If temp_c > -10 C for 3000 ms with hysteresis 10 % and cooldown 30000 ms then
+  on alarm
+  publish event "freezer_temp_high" with timestamp and value
+
+--- WoT TD JSON (freezer_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Freezer-7",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "temp_c": {
+      "type": "number",
+      "unit": "C"
+    }
+  },
+  "actions": {
+    "alarm": {}
+  },
+  "base": "mqtt://plant/freezer7",
+  "forms": [
+    {
+      "href": "mqtt://plant/freezer7",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Freezer-7/sensor/+",
+        "action": "Freezer-7/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (freezer_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "Freezer-7_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://plant/freezer7"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (freezer_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "Freezer-7_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (freezer.json) ---
+{"device": "Freezer-7", "endpoint": "mqtt://plant/freezer7", "sensor": "temp_c", "period_ms": 1000, "policy": {"metric": "temp_c", "comparator": ">", "threshold": -10.0, "duration_ms": 3000, "hysteresis_pct": 10.0, "cooldown_ms": 30000}, "samples": [{"t_ms": 0, "value": 150.86047501286112, "consecutive": 1}, {"t_ms": 1000, "value": 151.38372459081074, "consecutive": 2}, {"t_ms": 2000, "value": 149.02526541211265, "consecutive": 3}], "trigger": {"t_ms": 2000, "actions": ["on alarm", "publish event \"freezer_temp_high\" with timestamp and value"]}}
+
+--- Benchmark JSON (freezer_bench.json) ---
+{"ok": true, "cpu_pct": 33.3, "mem_pct": 53.1, "p50_trigger_ms": 2000, "p99_trigger_ms": 2000, "repro_identical": false}
+
+--- TD Validation JSON (freezer_td_validate.json) ---
+{"ok": true}
+
+=== Scenario: boiler ===
+--- HLX Spec (boiler_a.hlx) ---
+Device "Boiler-A" at mqtt://plant/boilerA
+Sensor "pressure" unit kPa period 200 ms
+Actuator "relief_valve" actions open, close
+
+If pressure > 180 kPa for 600 ms then
+  open relief_valve
+  publish event "overpressure" with timestamp and value
+  store last 5000 ms of pressure to table "incidents"
+
+--- WoT TD JSON (boiler_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Boiler-A",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "pressure": {
+      "type": "number",
+      "unit": "kPa"
+    }
+  },
+  "actions": {
+    "relief_valve": {}
+  },
+  "base": "mqtt://plant/boilerA",
+  "forms": [
+    {
+      "href": "mqtt://plant/boilerA",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Boiler-A/sensor/+",
+        "action": "Boiler-A/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (boiler_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "Boiler-A_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://plant/boilerA"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (boiler_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "Boiler-A_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (boiler.json) ---
+{"device": "Boiler-A", "endpoint": "mqtt://plant/boilerA", "sensor": "pressure", "period_ms": 200, "policy": {"metric": "pressure", "comparator": ">", "threshold": 180.0, "duration_ms": 600, "hysteresis_pct": 0.0, "cooldown_ms": 0}, "samples": [{"t_ms": 0, "value": 148.54283282989812, "consecutive": 0}, {"t_ms": 200, "value": 149.583425724387, "consecutive": 0}, {"t_ms": 400, "value": 148.95893834147492, "consecutive": 0}, {"t_ms": 600, "value": 148.28251038400094, "consecutive": 0}, {"t_ms": 800, "value": 148.6769989684325, "consecutive": 0}, {"t_ms": 1000, "value": 151.87206687254348, "consecutive": 0}, {"t_ms": 1200, "value": 149.35813522071882, "consecutive": 0}, {"t_ms": 1400, "value": 149.0796232303044, "consecutive": 0}, {"t_ms": 1600, "value": 150.7578974571305, "consecutive": 0}, {"t_ms": 1800, "value": 149.3378477012132, "consecutive": 0}, {"t_ms": 2000, "value": 185.0, "consecutive": 1}, {"t_ms": 2200, "value": 185.0, "consecutive": 2}, {"t_ms": 2400, "value": 185.0, "consecutive": 3}], "trigger": {"t_ms": 2400, "actions": ["open relief_valve", "publish event \"overpressure\" with timestamp and value", "store last 5000 ms of pressure to table \"incidents\""]}}
+
+--- Benchmark JSON (boiler_bench.json) ---
+{"ok": true, "cpu_pct": 12.5, "mem_pct": 53.3, "p50_trigger_ms": 2400, "p99_trigger_ms": 2400, "repro_identical": false}
+
+--- TD Validation JSON (boiler_td_validate.json) ---
+{"ok": true}
+
+=== Scenario: hvac ===
+--- HLX Spec (hvac.hlx) ---
+Device "HVAC-Unit-42" at mqtt://building/A3/HVAC42
+Sensor "temp" unit C period 1 s
+Actuator "heater" actions on, off
+Actuator "cooler" actions on, off
+
+If temp < 21.5 C for 2 s with hysteresis 5 % and cooldown 5000 ms then
+  on heater
+  off cooler
+  publish event "heat_on"
+If temp > 22.5 C for 2 s with hysteresis 5 % and cooldown 5000 ms then
+  off heater
+  on cooler
+  publish event "cool_on"
+
+--- WoT TD JSON (hvac_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "HVAC-Unit-42",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "temp": {
+      "type": "number",
+      "unit": "C"
+    }
+  },
+  "actions": {
+    "heater": {},
+    "cooler": {}
+  },
+  "base": "mqtt://building/A3/HVAC42",
+  "forms": [
+    {
+      "href": "mqtt://building/A3/HVAC42",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "HVAC-Unit-42/sensor/+",
+        "action": "HVAC-Unit-42/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (hvac_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "HVAC-Unit-42_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://building/A3/HVAC42"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (hvac_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "HVAC-Unit-42_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (hvac.json) ---
+{"device": "HVAC-Unit-42", "endpoint": "mqtt://building/A3/HVAC42", "sensor": "temp", "period_ms": 1000, "policy": {"metric": "temp", "comparator": "<", "threshold": 21.5, "duration_ms": 2000, "hysteresis_pct": 5.0, "cooldown_ms": 5000}, "samples": [{"t_ms": 0, "value": 148.68399237109668, "consecutive": 0}, {"t_ms": 1000, "value": 148.1407683407972, "consecutive": 0}, {"t_ms": 2000, "value": 149.99462371401088, "consecutive": 0}, {"t_ms": 3000, "value": 151.10981600495515, "consecutive": 0}, {"t_ms": 4000, "value": 149.49004965903, "consecutive": 0}, {"t_ms": 5000, "value": 148.3100337517546, "consecutive": 0}, {"t_ms": 6000, "value": 150.39225660586996, "consecutive": 0}, {"t_ms": 7000, "value": 150.91021537867908, "consecutive": 0}, {"t_ms": 8000, "value": 151.17519716396566, "consecutive": 0}, {"t_ms": 9000, "value": 149.60781756137877, "consecutive": 0}, {"t_ms": 10000, "value": 185.0, "consecutive": 0}, {"t_ms": 11000, "value": 185.0, "consecutive": 0}, {"t_ms": 12000, "value": 185.0, "consecutive": 0}, {"t_ms": 13000, "value": 185.0, "consecutive": 0}, {"t_ms": 14000, "value": 185.0, "consecutive": 0}, {"t_ms": 15000, "value": 185.0, "consecutive": 0}, {"t_ms": 16000, "value": 185.0, "consecutive": 0}, {"t_ms": 17000, "value": 185.0, "consecutive": 0}, {"t_ms": 18000, "value": 185.0, "consecutive": 0}, {"t_ms": 19000, "value": 185.0, "consecutive": 0}, {"t_ms": 20000, "value": 185.0, "consecutive": 0}, {"t_ms": 21000, "value": 185.0, "consecutive": 0}, {"t_ms": 22000, "value": 185.0, "consecutive": 0}, {"t_ms": 23000, "value": 185.0, "consecutive": 0}, {"t_ms": 24000, "value": 185.0, "consecutive": 0}, {"t_ms": 25000, "value": 185.0, "consecutive": 0}, {"t_ms": 26000, "value": 185.0, "consecutive": 0}, {"t_ms": 27000, "value": 185.0, "consecutive": 0}, {"t_ms": 28000, "value": 185.0, "consecutive": 0}, {"t_ms": 29000, "value": 185.0, "consecutive": 0}, {"t_ms": 30000, "value": 185.0, "consecutive": 0}, {"t_ms": 31000, "value": 185.0, "consecutive": 0}, {"t_ms": 32000, "value": 185.0, "consecutive": 0}, {"t_ms": 33000, "value": 185.0, "consecutive": 0}, {"t_ms": 34000, "value": 185.0, "consecutive": 0}, {"t_ms": 35000, "value": 185.0, "consecutive": 0}, {"t_ms": 36000, "value": 185.0, "consecutive": 0}, {"t_ms": 37000, "value": 185.0, "consecutive": 0}, {"t_ms": 38000, "value": 185.0, "consecutive": 0}, {"t_ms": 39000, "value": 185.0, "consecutive": 0}, {"t_ms": 40000, "value": 185.0, "consecutive": 0}, {"t_ms": 41000, "value": 185.0, "consecutive": 0}, {"t_ms": 42000, "value": 185.0, "consecutive": 0}, {"t_ms": 43000, "value": 185.0, "consecutive": 0}, {"t_ms": 44000, "value": 185.0, "consecutive": 0}, {"t_ms": 45000, "value": 185.0, "consecutive": 0}, {"t_ms": 46000, "value": 185.0, "consecutive": 0}, {"t_ms": 47000, "value": 185.0, "consecutive": 0}, {"t_ms": 48000, "value": 185.0, "consecutive": 0}, {"t_ms": 49000, "value": 185.0, "consecutive": 0}], "trigger": null}
+
+--- Benchmark JSON (hvac_bench.json) ---
+{"ok": true, "cpu_pct": 6.2, "mem_pct": 53.5, "p50_trigger_ms": 11000, "p99_trigger_ms": 11000, "repro_identical": false}
+
+--- TD Validation JSON (hvac_td_validate.json) ---
+{"ok": true}
+
+=== Scenario: tank_flow ===
+--- HLX Spec (tank_flow.hlx) ---
+Device "Tank-7" at mqtt://plant/water/T7
+Sensor "level" unit % period 500 ms
+Sensor "flow_in" unit Lps period 500 ms
+Sensor "flow_out" unit Lps period 500 ms
+Actuator "inlet_valve" actions open, close
+Actuator "outlet_valve" actions open, close
+
+If level >= 95 for 500 ms then
+  close outlet_valve
+  publish event "overflow_protect"
+If level <= 10 for 500 ms then
+  close outlet_valve
+  publish event "dry_protect"
+If flow_in > flow_out for 500 ms then
+  store last 10000 ms of flow_in, flow_out to table "imbalance"
+  publish event "imbalance_detected"
+
+--- WoT TD JSON (tank_flow_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Tank-7",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "flow_in": {
+      "type": "number",
+      "unit": "Lps"
+    },
+    "flow_out": {
+      "type": "number",
+      "unit": "Lps"
+    }
+  },
+  "actions": {
+    "inlet_valve": {},
+    "outlet_valve": {}
+  },
+  "base": "mqtt://plant/water/T7",
+  "forms": [
+    {
+      "href": "mqtt://plant/water/T7",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Tank-7/sensor/+",
+        "action": "Tank-7/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (tank_flow_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "Tank-7_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://plant/water/T7"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (tank_flow_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "Tank-7_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (tank_flow.json) ---
+{"device": "Tank-7", "endpoint": "mqtt://plant/water/T7", "sensor": "flow_in", "period_ms": 500, "policy": {"metric": "flow_in", "comparator": ">", "threshold": "flow_out", "duration_ms": 500, "hysteresis_pct": 0.0, "cooldown_ms": 0}, "samples": [{"t_ms": 0, "value": 148.94426423241538, "consecutive": 0}, {"t_ms": 500, "value": 148.05699905147966, "consecutive": 0}, {"t_ms": 1000, "value": 148.77340785362824, "consecutive": 0}, {"t_ms": 1500, "value": 148.32424847859022, "consecutive": 0}, {"t_ms": 2000, "value": 149.12815720500018, "consecutive": 0}, {"t_ms": 2500, "value": 151.47182433671676, "consecutive": 0}, {"t_ms": 3000, "value": 149.42751984109375, "consecutive": 0}, {"t_ms": 3500, "value": 148.64481857852002, "consecutive": 0}, {"t_ms": 4000, "value": 149.62106273190292, "consecutive": 0}, {"t_ms": 4500, "value": 148.62487186767498, "consecutive": 0}, {"t_ms": 5000, "value": 185.0, "consecutive": 0}, {"t_ms": 5500, "value": 185.0, "consecutive": 0}, {"t_ms": 6000, "value": 185.0, "consecutive": 0}, {"t_ms": 6500, "value": 185.0, "consecutive": 0}, {"t_ms": 7000, "value": 185.0, "consecutive": 0}, {"t_ms": 7500, "value": 185.0, "consecutive": 0}, {"t_ms": 8000, "value": 185.0, "consecutive": 0}, {"t_ms": 8500, "value": 185.0, "consecutive": 0}, {"t_ms": 9000, "value": 185.0, "consecutive": 0}, {"t_ms": 9500, "value": 185.0, "consecutive": 0}, {"t_ms": 10000, "value": 185.0, "consecutive": 0}, {"t_ms": 10500, "value": 185.0, "consecutive": 0}, {"t_ms": 11000, "value": 185.0, "consecutive": 0}, {"t_ms": 11500, "value": 185.0, "consecutive": 0}, {"t_ms": 12000, "value": 185.0, "consecutive": 0}, {"t_ms": 12500, "value": 185.0, "consecutive": 0}, {"t_ms": 13000, "value": 185.0, "consecutive": 0}, {"t_ms": 13500, "value": 185.0, "consecutive": 0}, {"t_ms": 14000, "value": 185.0, "consecutive": 0}, {"t_ms": 14500, "value": 185.0, "consecutive": 0}, {"t_ms": 15000, "value": 185.0, "consecutive": 0}, {"t_ms": 15500, "value": 185.0, "consecutive": 0}, {"t_ms": 16000, "value": 185.0, "consecutive": 0}, {"t_ms": 16500, "value": 185.0, "consecutive": 0}, {"t_ms": 17000, "value": 185.0, "consecutive": 0}, {"t_ms": 17500, "value": 185.0, "consecutive": 0}, {"t_ms": 18000, "value": 185.0, "consecutive": 0}, {"t_ms": 18500, "value": 185.0, "consecutive": 0}, {"t_ms": 19000, "value": 185.0, "consecutive": 0}, {"t_ms": 19500, "value": 185.0, "consecutive": 0}, {"t_ms": 20000, "value": 185.0, "consecutive": 0}, {"t_ms": 20500, "value": 185.0, "consecutive": 0}, {"t_ms": 21000, "value": 185.0, "consecutive": 0}, {"t_ms": 21500, "value": 185.0, "consecutive": 0}, {"t_ms": 22000, "value": 185.0, "consecutive": 0}, {"t_ms": 22500, "value": 185.0, "consecutive": 0}, {"t_ms": 23000, "value": 185.0, "consecutive": 0}, {"t_ms": 23500, "value": 185.0, "consecutive": 0}, {"t_ms": 24000, "value": 185.0, "consecutive": 0}, {"t_ms": 24500, "value": 185.0, "consecutive": 0}], "trigger": null}
+
+--- Benchmark JSON (tank_flow_bench.json) ---
+{"ok": true, "cpu_pct": 33.3, "mem_pct": 53.5, "p50_trigger_ms": 5000, "p99_trigger_ms": 5000, "repro_identical": false}
+
+--- TD Validation JSON (tank_flow_td_validate.json) ---
+{"ok": true}
+
+=== Scenario: hospital_co2 ===
+--- HLX Spec (hospital_co2.hlx) ---
+Device "Room-312" at mqtt://hospital/room312
+Sensor "co2_ppm" unit ppm period 500 ms
+Actuator "vent_damper" actions open, close
+
+If co2_ppm > 1200 ppm for 1000 ms with hysteresis 5 % and cooldown 5000 ms then
+  open vent_damper
+  publish event "co2_alert" with timestamp and value
+  store last 60000 ms of co2_ppm to table "air_quality"
+
+--- WoT TD JSON (hospital_co2_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Room-312",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "co2_ppm": {
+      "type": "number",
+      "unit": "ppm"
+    }
+  },
+  "actions": {
+    "vent_damper": {}
+  },
+  "base": "mqtt://hospital/room312",
+  "forms": [
+    {
+      "href": "mqtt://hospital/room312",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Room-312/sensor/+",
+        "action": "Room-312/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (hospital_co2_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "Room-312_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://hospital/room312"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (hospital_co2_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "Room-312_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (hospital_co2.json) ---
+{"device": "Room-312", "endpoint": "mqtt://hospital/room312", "sensor": "co2_ppm", "period_ms": 500, "policy": {"metric": "co2_ppm", "comparator": ">", "threshold": 1200.0, "duration_ms": 1000, "hysteresis_pct": 5.0, "cooldown_ms": 5000}, "samples": [{"t_ms": 0, "value": 148.3473509425959, "consecutive": 0}, {"t_ms": 500, "value": 151.25725951822338, "consecutive": 0}, {"t_ms": 1000, "value": 151.74423315568686, "consecutive": 0}, {"t_ms": 1500, "value": 149.89373131189518, "consecutive": 0}, {"t_ms": 2000, "value": 148.56806917265595, "consecutive": 0}, {"t_ms": 2500, "value": 151.86540730554665, "consecutive": 0}, {"t_ms": 3000, "value": 151.94133105255932, "consecutive": 0}, {"t_ms": 3500, "value": 150.08983768805152, "consecutive": 0}, {"t_ms": 4000, "value": 149.74536566920904, "consecutive": 0}, {"t_ms": 4500, "value": 150.49969265007223, "consecutive": 0}, {"t_ms": 5000, "value": 1205.0, "consecutive": 1}, {"t_ms": 5500, "value": 1205.0, "consecutive": 2}], "trigger": {"t_ms": 5500, "actions": ["open vent_damper", "publish event \"co2_alert\" with timestamp and value", "store last 60000 ms of co2_ppm to table \"air_quality\""]}}
+
+--- Benchmark JSON (hospital_co2_bench.json) ---
+{"ok": true, "cpu_pct": 28.6, "mem_pct": 53.0, "p50_trigger_ms": 5500, "p99_trigger_ms": 5500, "repro_identical": false}
+
+--- TD Validation JSON (hospital_co2_td_validate.json) ---
+{"ok": true}
+
+=== Scenario: pipeline_leak ===
+--- HLX Spec (pipeline_leak.hlx) ---
+Device "Pipe-12" at mqtt://field/pipe12
+Sensor "pressure" unit kPa period 200 ms
+Sensor "pressure_downstream" unit kPa period 200 ms
+Actuator "main_valve" actions close, open
+
+If pressure - pressure_downstream > 50 for 600 ms then
+  close main_valve
+  publish event "possible_leak"
+  store last 10000 ms of pressure, pressure_downstream to table "leaks"
+
+--- WoT TD JSON (pipeline_leak_thing_description.json) ---
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Pipe-12",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "pressure": {
+      "type": "number",
+      "unit": "kPa"
+    },
+    "pressure_downstream": {
+      "type": "number",
+      "unit": "kPa"
+    }
+  },
+  "actions": {
+    "main_valve": {}
+  },
+  "base": "mqtt://field/pipe12",
+  "forms": [
+    {
+      "href": "mqtt://field/pipe12",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Pipe-12/sensor/+",
+        "action": "Pipe-12/actuator/+"
+      }
+    }
+  ]
+}
+--- Edge Manifest JSON (pipeline_leak_edge_manifest.json) ---
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "Pipe-12_edge",
+  "ComponentVersion": "1.0.0",
+  "ComponentDescription": "HLX-generated edge component",
+  "Manifests": [
+    {
+      "Platform": {
+        "os": "linux"
+      },
+      "Artifacts": [
+        {
+          "Uri": "s3://bucket/hlx-edge/edge_module.py"
+        }
+      ],
+      "Lifecycle": {
+        "Install": {
+          "Script": "pip3 install english-programming[iot]"
+        },
+        "Run": {
+          "Script": "python3 -m english_programming.hlx.edge_module --spec english_programming/examples/boiler_a.hlx --endpoint mqtt://field/pipe12"
+        }
+      }
+    }
+  ]
+}
+--- Cloud Manifest JSON (pipeline_leak_azure_deployment.json) ---
+{
+  "content": {
+    "modulesContent": {
+      "$edgeAgent": {
+        "properties.desired": {
+          "schemaVersion": "1.1",
+          "runtime": {
+            "type": "docker",
+            "settings": {
+              "minDockerVersion": "v1.25"
+            }
+          },
+          "modules": {
+            "Pipe-12_edge": {
+              "version": "1.0",
+              "type": "docker",
+              "status": "running",
+              "restartPolicy": "always",
+              "settings": {
+                "image": "ghcr.io/yourorg/hlx-edge:latest",
+                "createOptions": "{}"
+              }
+            }
+          }
+        }
+      },
+      "$edgeHub": {
+        "properties.desired": {
+          "schemaVersion": "1.2",
+          "routes": {
+            "route1": "FROM /messages/* INTO $upstream"
+          },
+          "storeAndForwardConfiguration": {
+            "timeToLiveSecs": 7200
+          }
+        }
+      }
+    }
+  }
+}
+--- Trace JSON (pipeline_leak.json) ---
+{"device": "Pipe-12", "endpoint": "mqtt://field/pipe12", "sensor": "pressure", "period_ms": 200, "policy": {"metric": "pressure - pressure_downstream", "comparator": ">", "threshold": 50.0, "duration_ms": 600, "hysteresis_pct": 0.0, "cooldown_ms": 0}, "samples": [{"t_ms": 0, "value": 148.3231675705161, "consecutive": 1}, {"t_ms": 200, "value": 149.07934717734548, "consecutive": 2}, {"t_ms": 400, "value": 148.39314697768668, "consecutive": 3}], "trigger": {"t_ms": 400, "actions": ["close main_valve", "publish event \"possible_leak\"", "store last 10000 ms of pressure, pressure_downstream to table \"leaks\""]}}
+
+--- Benchmark JSON (pipeline_leak_bench.json) ---
+{"ok": true, "cpu_pct": 50.0, "mem_pct": 53.0, "p50_trigger_ms": 400, "p99_trigger_ms": 400, "repro_identical": false}
+
+--- TD Validation JSON (pipeline_leak_td_validate.json) ---
+{"ok": true}

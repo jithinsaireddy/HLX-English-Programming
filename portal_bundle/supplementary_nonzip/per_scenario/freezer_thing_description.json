@@ -1,0 +1,42 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1"
+  ],
+  "@type": [
+    "Thing"
+  ],
+  "title": "Freezer-7",
+  "security": [
+    "basic_sc"
+  ],
+  "securityDefinitions": {
+    "basic_sc": {
+      "scheme": "basic"
+    }
+  },
+  "properties": {
+    "temp_c": {
+      "type": "number",
+      "unit": "C"
+    }
+  },
+  "actions": {
+    "alarm": {}
+  },
+  "base": "mqtt://plant/freezer7",
+  "forms": [
+    {
+      "href": "mqtt://plant/freezer7",
+      "op": [
+        "readproperty",
+        "invokeaction"
+      ],
+      "contentType": "application/json",
+      "mqv:method": "mqtt",
+      "mqv:topics": {
+        "read": "Freezer-7/sensor/+",
+        "action": "Freezer-7/actuator/+"
+      }
+    }
+  ]
+}
