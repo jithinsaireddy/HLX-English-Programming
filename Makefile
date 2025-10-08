@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: dev backend frontend prod down
+.PHONY: dev backend frontend prod down gen-synonyms rebuild run-smoke
 
 nlp-model:
 	python -m spacy download en_core_web_sm
@@ -19,5 +19,16 @@ prod:
 
 down:
 	docker compose down
+
+gen-synonyms:
+	python -m english_programming.tools.generate_synonyms --output english_programming/config/synonyms.generated.yml --cap 1000
+
+rebuild:
+	docker compose build web frontend && docker compose up -d
+
+run-smoke:
+	@curl -sS -X POST -H 'Content-Type: application/json' \
+	  --data '{"code":"create a list called xs\ninsert 9 into list xs\ncount of xs store in n\nprint n"}' \
+	  http://localhost:5173/api/epl/exec | sed 's/\\n/\n/g' | head -200
 
 

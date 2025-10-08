@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 const API = (import.meta as any).env?.VITE_API_URL || '/api'
 
 export default function App() {
-  const [tab, setTab] = useState<'hlx'|'epl'|'tutorials'|'nlp'>('hlx')
+  const [tab, setTab] = useState<'hlx'|'epl'|'tutorials'|'nlp'|'learn'>('hlx')
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}}>
       <header>
@@ -15,6 +15,7 @@ export default function App() {
           <button className={tab==='epl'?'active':''} onClick={()=>setTab('epl')}>EPL</button>
           <button className={tab==='tutorials'?'active':''} onClick={()=>setTab('tutorials')}>Tutorials</button>
           <button className={tab==='nlp'?'active':''} onClick={()=>setTab('nlp')}>NLP Debug</button>
+          <button className={tab==='learn'?'active':''} onClick={()=>setTab('learn')}>Learn</button>
         </div>
       </header>
       <div className="container">
@@ -23,6 +24,7 @@ export default function App() {
           {tab==='epl' && <EPL/>}
           {tab==='tutorials' && <Tutorials/>}
           {tab==='nlp' && <NLPDebug/>}
+          {tab==='learn' && <Learn/>}
         </motion.div>
       </div>
     </motion.div>
@@ -133,6 +135,28 @@ function EPL() {
   const [shareUrl, setShareUrl] = useState('')
   const snippets = [
     {name:'Sum & Print', text: sample},
+    {name:'Loops – Repeat N times', text:`set sum to 0
+repeat 5 times:
+  add sum and 1 and store the result in sum
+print sum`},
+    {name:'Loops – For Range', text:`set sum to 0
+for i from 1 to 4:
+  add sum and i and store the result in sum
+print sum`},
+    {name:'Loops – Foreach', text:`create a list called xs with values 1, 2, 3
+set sum to 0
+for each x in list xs:
+  add sum and x and store the result in sum
+print sum`},
+    {name:'Loops – While', text:`set i to 0
+set sum to 0
+while i is less than or equal to 3:
+  add sum and i and store the result in sum
+  add i and 1 and store the result in i
+print sum`},
+    {name:'Multi-variable Assignment', text:`create a variable called x and y and set it to 2 and 3
+add x and y and store the result in sum
+print sum`},
     {name:'Strings & Trim', text:`create a variable called name and set it to " alice "\ntrim name and store it in cleaned\nmake the cleaned uppercase and store it in upper\nprint upper`},
     {name:'If/Else', text:`create a variable called age and set it to 21\nif age is greater than 18:\n  set status to "Adult"\nelse:\n  set status to "Minor"\nprint status`},
     {name:'Files CRUD', text:`create a variable called fname and set it to "tmp.txt"\nwrite file fname with content "hello"\nread file fname store in data\nprint data\ndelete file fname`},
@@ -155,6 +179,67 @@ function EPL() {
     {name:'Dijkstra (sketch)', text:`create a list called w0 with values 1, 4\ncreate a list called w1 with values 4\ncreate a list called w2\ncreate a map called adj\nmap put adj 0 w0 store in adj\nmap put adj 1 w1 store in adj\nmap put adj 2 w2 store in adj\ncreate a map called dist\nmap put dist 0 0 store in dist\nmap put dist 1 999 store in dist\nmap put dist 2 999 store in dist\ncreate a list called q with values 0\ncreate a variable called qi and set it to 0\nwhile qi is less than 1:\n  get item at index qi from list q and store in u\n  map get adj u store in nbrs\n  length of nbrs store in m\n  create a variable called j and set it to 0\n  while j is less than m:\n    get item at index j from list nbrs and store in v\n    map get dist u store in du\n    map get dist v store in dv\n    if du is less than dv:\n      map put dist v du store in dist\n    add j and 1 and store the result in j\n  add qi and 1 and store the result in qi\nmap get dist 1 store in d1\nprint d1`},
     {name:'LRU Cache (sketch)', text:`create a map called cache\ncreate a list called order\n# put\nmap put cache 1 10 store in cache\nappend 1 to list order store in order\n# get\nmap get cache 1 store in v\nprint v`},
     {name:'Trie Insert/Find (sketch)', text:`create a map called root\ncreate a variable called word and set it to "to"\n# insert 't'\ncreate a map called t\nmap put root 't' t store in root\n# insert 'o' under 't'\ncreate a map called o\nmap put t 'o' o store in t\n# find\nmap get root 't' store in n1\nmap get t 'o' store in n2\nprint 1`},
+    {name:'OOP – Inheritance & Override', text:`Define class Animal with fields: name
+Method speak()
+  return '...'
+End method
+End class
+Define class Dog extends Animal
+Method speak()
+  return 'woof'
+End method
+End class
+new Animal store in a
+set a.name to 'Any'
+new Dog store in d
+set d.name to 'Rex'
+call method a.speak() store in sa
+call method d.speak() store in sd
+print sa
+print sd`}
+    , {name:'OOP – Polymorphism (foreach)', text:`Define class Animal
+Method speak()
+  return '...'
+End method
+End class
+Define class Cat extends Animal
+Method speak()
+  return 'meow'
+End method
+End class
+new Animal store in a
+new Cat store in c
+create a list called pets with values a, c
+for each p in list pets:
+  call method p.speak() store in s
+  print s`}
+    , {name:'OOP – Constructor (__init__)', text:`Define class Acc with fields: value
+Method __init__(v)
+  set self.value to v
+End method
+End class
+new Acc with args 42 store in a
+get a.value store in out
+print out`}
+    , {name:'Mini App – Bank Account', text:`Define class Account with fields: owner, balance
+Method __init__(name, start)
+  set self.owner to name
+  set self.balance to start
+End method
+Method deposit(x)
+  add self.balance and x and store the result in self.balance
+  return self.balance
+End method
+Method withdraw(x)
+  subtract self.balance and x and store the result in self.balance
+  return self.balance
+End method
+End class
+new Account with args 'Alice', 100 store in acc
+call method acc.deposit(50) store in _
+call method acc.withdraw(20) store in _
+get acc.balance store in bal
+print bal`}
   ]
   const run = async () => {
     const r = await fetch(API+'/epl/exec', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) })
@@ -170,7 +255,8 @@ function EPL() {
       '--- Text IR ---\n'+(j.text_ir||[]).join('\n'),
       '--- NLBC Disassembly ---\n'+(j.disasm||''),
       '--- Output (PRINT) ---\n'+(j.output||[]).join('\n'),
-      '--- Variables ---\n'+JSON.stringify(j.env||{}, null, 2)
+      '--- Variables ---\n'+JSON.stringify(j.env||{}, null, 2),
+      '--- Hints ---\n'+(j.hints||[]).join('\n')
     ]
     setMsg(blocks.join('\n\n'))
   }
@@ -189,7 +275,7 @@ function EPL() {
   },[])
   return (
     <div>
-      <p>Write EPL lines and Run. (Output prints in server logs.)</p>
+      <p><b>Write in everyday English</b> and Run. We normalize synonyms and phrasing, never hard-fail, and show helpful Hints and Outputs below.</p>
       <div style={{display:'flex', gap:12}}>
         <div style={{minWidth:220}}>
           <h4>Examples</h4>
@@ -243,6 +329,66 @@ function NLPDebug() {
         <motion.button whileTap={{scale:0.97}} onClick={run}>Analyze</motion.button>
       </div>
       <motion.pre initial={{opacity:0}} animate={{opacity:1}}>{out}</motion.pre>
+    </div>
+  )
+}
+
+function Learn(){
+  const [syn, setSyn] = React.useState<Record<string,string>>({})
+  const [err, setErr] = React.useState('')
+  const [tel, setTel] = React.useState<{normalized_count:number, unknown_count:number, normalized_samples:string[], unknown_samples:string[]}>({normalized_count:0,unknown_count:0,normalized_samples:[],unknown_samples:[]})
+  React.useEffect(()=>{
+    fetch(API+'/epl/synonyms')
+      .then(r=>r.json())
+      .then(j=>{ if(j && j.ok && j.synonyms){ setSyn(j.synonyms) } })
+      .catch(e=> setErr(String(e)))
+    fetch(API+'/epl/telemetry')
+      .then(r=>r.json())
+      .then(j=>{ if(j && j.ok && j.telemetry){ setTel(j.telemetry) } })
+      .catch(()=>{})
+  },[])
+  const items = Object.entries(syn)
+  return (
+    <div>
+      <h3>Learn: English Programming Language</h3>
+      <p><b>General English</b>: Write programs in everyday English. We normalize synonyms and phrasing to canonical forms so your intent compiles.</p>
+      <p><b>Friendly mode</b>: The compiler never hard-fails. Unknown lines become <i>hints</i>, and near-miss phrases are normalized.</p>
+      <p><b>Synonyms</b>: We support config-driven synonyms via <code>synonyms.yml</code> and built-in rules. You can add domain phrases there—changes are picked up live.</p>
+      <h4>Current Synonyms</h4>
+      {err && <small style={{color:'crimson'}}>Load error: {err}</small>}
+      {items.length===0 ? <p>No custom synonyms found.</p> :
+        <ul>
+          {items.map(([from,to])=> <li key={from}><code>{from}</code> → <code>{to}</code></li>)}
+        </ul>
+      }
+      <h4>Telemetry</h4>
+      <p><b>Normalized</b>: {tel.normalized_count} &nbsp; <b>Unknown</b>: {tel.unknown_count}</p>
+      {(tel.normalized_samples.length>0 || tel.unknown_samples.length>0) && (
+        <div className="row">
+          {tel.normalized_samples.length>0 && (
+            <div className="col">
+              <h5>Recent Normalizations</h5>
+              <ul>
+                {tel.normalized_samples.slice(-10).map((h,i)=> <li key={i}><code>{h}</code></li>)}
+              </ul>
+            </div>
+          )}
+          {tel.unknown_samples.length>0 && (
+            <div className="col">
+              <h5>Recent Unknowns</h5>
+              <ul>
+                {tel.unknown_samples.slice(-10).map((h,i)=> <li key={i}><code>{h}</code></li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      <h4>Tips</h4>
+      <ul>
+        <li><b>Collections</b>: “create a list called nums”, “append 1 to nums”, “size of nums store in n”.</li>
+        <li><b>Functions</b>: “Create function add(a, b)” … “End operation”; call: “call function add with 2, 3 and store in r”.</li>
+        <li><b>Classes</b>: “Define class Account …”, “Method deposit(x)” … “End method”.</li>
+      </ul>
     </div>
   )
 }

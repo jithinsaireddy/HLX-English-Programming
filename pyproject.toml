@@ -17,6 +17,11 @@ dependencies = [
 [project.optional-dependencies]
 nlp = [
   "spacy>=3.7.0",
+  "PyYAML>=6.0.1",
+]
+tools = [
+  "nltk>=3.9",
+  "PyYAML>=6.0.1",
 ]
 jit = [
   "llvmlite>=0.41",

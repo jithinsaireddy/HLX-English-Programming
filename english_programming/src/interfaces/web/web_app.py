@@ -36,6 +36,13 @@ compiler = ImprovedNLPCompiler()
 vm = ImprovedNLVM(debug=False)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('epl_bin')
+# Server-side telemetry aggregator (in-memory)
+app.config.setdefault('_telemetry_server', {
+    'normalized_count': 0,
+    'unknown_count': 0,
+    'normalized_samples': [],  # last 50 samples
+    'unknown_samples': [],     # last 50 samples
+})
 # Disable legacy extensions by default to avoid noisy warnings with current VM API
 # Set EP_LOAD_EXTENSIONS=1 to attempt loading
 if os.getenv('EP_LOAD_EXTENSIONS') == '1':
@@ -297,10 +304,17 @@ def epl_exec():
             pass
         code = request.get_json(force=True).get("code", "")
         lines = [ln for ln in code.strip().split("\n") if ln.strip()]
-        # Text IR via ImprovedNLPCompiler
-        text_ir = compiler.translate_to_bytecode(lines)
-        if not text_ir:
-            return {"ok": False, "error": "No instructions"}, 400
+        # Prefer friendly mode for users: always try to interpret and not fail
+        try:
+            os.environ['EP_FUZZY'] = os.getenv('EP_FUZZY', '1') or '1'
+            os.environ['EP_FUZZY_PRINT'] = os.getenv('EP_FUZZY_PRINT', '1') or '1'
+        except Exception:
+            pass
+        # Text IR via ImprovedNLPCompiler (best-effort). If empty, still continue to binary compile.
+        try:
+            text_ir = compiler.translate_to_bytecode(lines)
+        except Exception as _e:
+            text_ir = []
         # Map EP_ENABLE_NET -> EP_ALLOW_NET for binary VM compatibility
         try:
             if os.getenv('EP_ALLOW_NET') is None and os.getenv('EP_ENABLE_NET', '0') == '1':
@@ -338,7 +352,25 @@ def epl_exec():
             traces = env.get('_traces', [])
             output = [_jsonable(v) for (op, *rest) in traces for v in ([rest[0]] if op == 'PRINT' and rest else [])]
             user_env = {k: _jsonable(v) for k, v in env.items() if not k.startswith('_')}
-            return {"ok": True, "text_ir": text_ir, "disasm": disasm, "output": output, "env": user_env,
+            hints = env.get('_hints', [])
+            # Update server-side telemetry based on hints
+            try:
+                tel = app.config.setdefault('_telemetry_server', {
+                    'normalized_count': 0,
+                    'unknown_count': 0,
+                    'normalized_samples': [],
+                    'unknown_samples': [],
+                })
+                for h in hints or []:
+                    if isinstance(h, str) and h.startswith('Normalized: '):
+                        tel['normalized_count'] = int(tel.get('normalized_count', 0)) + 1
+                        tel['normalized_samples'] = (tel.get('normalized_samples', []) + [h])[-50:]
+                    elif isinstance(h, str) and h.startswith('Unknown: '):
+                        tel['unknown_count'] = int(tel.get('unknown_count', 0)) + 1
+                        tel['unknown_samples'] = (tel.get('unknown_samples', []) + [h])[-50:]
+            except Exception:
+                pass
+            return {"ok": True, "text_ir": text_ir, "disasm": disasm, "output": output, "env": user_env, "hints": hints,
                     "version": {"major": ver_major, "minor": ver_minor}}
         finally:
             try:
@@ -346,8 +378,13 @@ def epl_exec():
             except Exception:
                 pass
     except Exception as e:
-        msg = str(e)
-        return {"ok": False, "error": msg}, 400
+        # Friendly mode: never hard-fail; surface as hints for UI
+        try:
+            msg = str(e)
+        except Exception:
+            msg = "Unknown error"
+        return {"ok": True, "text_ir": [], "disasm": "", "output": [], "env": {},
+                "hints": [f"Error: {msg}"], "version": {"major": 1, "minor": 0}}
 
 
 # ---------------- Sharing (HLX/EPL snippets) ----------------
@@ -377,6 +414,33 @@ def share_get():
         return {"ok": False, "error": "Not found"}, 404
     data = _json.loads(fp.read_text())
     return {"ok": True, **data}
+# ----------- Synonyms endpoint -----------
+@app.route('/epl/synonyms', methods=['GET','OPTIONS'])
+@cross_origin()
+def epl_synonyms():
+    try:
+        from english_programming.bin.nlp_compiler_bin import _load_synonyms_yaml
+        m = _load_synonyms_yaml() or {}
+        return {"ok": True, "synonyms": m}
+    except Exception:
+        # Always return ok with empty map in friendly mode
+        return {"ok": True, "synonyms": {}}
+# ----------- Telemetry endpoint -----------
+@app.route('/epl/telemetry', methods=['GET','OPTIONS'])
+@cross_origin()
+def epl_telemetry():
+    try:
+        tel = app.config.get('_telemetry_server', {})
+        # Return a copy to avoid mutation surprises
+        out = {
+            'normalized_count': int(tel.get('normalized_count', 0)),
+            'unknown_count': int(tel.get('unknown_count', 0)),
+            'normalized_samples': list(tel.get('normalized_samples', []))[-50:],
+            'unknown_samples': list(tel.get('unknown_samples', []))[-50:],
+        }
+        return {"ok": True, "telemetry": out}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 500
 # ----------- Debug NLP endpoint -----------
 @app.route('/debug', methods=['POST'])
 @cross_origin()

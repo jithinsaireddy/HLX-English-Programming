@@ -1,5 +1,7 @@
 import re
+import difflib
 import logging
+import os
 from english_programming.bin.nlbc_encoder import write_module_with_funcs, write_module, CT_INT, CT_STR, write_module_full_with_debug
 
 # Mandatory spaCy normalization for flexible English
@@ -33,8 +35,21 @@ def _normalize_text_with_spacy(s: str) -> str:
     return lemmas
 
 def _canonicalize_synonyms(s: str) -> str:
-    # Map common synonyms to canonical phrases the regexes expect
+    # Map config-driven and common synonyms to canonical phrases
     s = s.lower()
+    # 1) Built-in phrase-level regex replacements (broad but safe)
+    for pat, repl in _builtin_phrase_replacements():
+        try:
+            s = re.sub(pat, repl, s)
+        except Exception:
+            continue
+    # 2) Dynamic from synonyms.yml (live-reload) – curated overrides
+    try:
+        for a, b in _load_synonyms_yaml().items():
+            s = re.sub(rf"\b{re.escape(a)}\b", b, s)
+    except Exception:
+        pass
+    # 3) Static replacements (comparators)
     replacements = [
         ('more than or equal to', 'greater than or equal to'),
         ('at least', 'greater than or equal to'),
@@ -51,7 +66,178 @@ def _canonicalize_synonyms(s: str) -> str:
         s = re.sub(rf"\b{re.escape(a)}\b", b, s)
     # spaCy lemma may turn 'greater' -> 'great'
     s = re.sub(r"\bgreat than\b", "greater than", s)
+    # 4) Similarity-based keyword normalization (very conservative)
+    try:
+        s = _canonicalize_by_similarity(s)
+    except Exception:
+        pass
     return s
+
+def _builtin_phrase_replacements():
+    """Return a list of (regex_pattern, replacement) for broad, safe, phrase-level normalization.
+    Keep patterns order stable; use \b for word boundaries to avoid corrupting values.
+    """
+    return [
+        # Collections
+        (r"\bsize of\b", "length of"),
+        (r"\bcount of\b", "length of"),
+        (r"\bnumber of items in\b", "length of"),
+        (r"\bnumber of elements in\b", "length of"),
+        (r"\bdictionary\b", "map"),
+        (r"\bdict\b", "map"),
+        (r"\bpush\b", "append"),
+        (r"\bremove last item from list\b", "take the last item from list"),
+        (r"\bexists in\b", "exists in"),  # idempotent
+        (r"\bcontains\b", "exists in"),
+        # Reorder: insert X into (list|array|sequence) Y  -> append X to list Y
+        (r"\binsert\s+(.+?)\s+into\s+(?:list|array|sequence)\s+(\w+)\b", r"append \1 to list \2"),
+        # Reorder: insert X into Y -> append X to Y (generic; list word may be omitted)
+        (r"\binsert\s+(.+?)\s+into\s+(\w+)\b", r"append \1 to \2"),
+        # Functions
+        (r"\bcreate function\b", "define function"),
+        (r"\bbuild function\b", "define function"),
+        (r"\bmake function\b", "define function"),
+        (r"\bend operation\b", "end function"),
+        (r"\bend procedure\b", "end function"),
+        (r"\bend routine\b", "end function"),
+        (r"\bend op\b", "end function"),
+        # Comparators (additional safety)
+        (r"\bno fewer than\b", "greater than or equal to"),
+        (r"\bno greater than\b", "less than or equal to"),
+        (r"\bnot less than\b", "greater than or equal to"),
+        (r"\bnot more than\b", "less than or equal to"),
+        # Booleans
+        (r"\bis equal to\b", "is equal to"),  # idempotent
+        (r"\bis not equal to\b", "is not equal to"),
+    ]
+
+def _canonicalize_by_similarity(text: str) -> str:
+    """Conservatively map near-miss keywords to canonical tokens using difflib.
+    Only alphabetic tokens with length>=4 are considered, and mapping requires a high cutoff.
+    """
+    canonical = [
+        # structures
+        'define','create','build','make','function','procedure','routine','operation','op','end',
+        'class','method','extends','fields','return','call','invoke','run','with',
+        # control flow
+        'if','elif','else','while','for','repeat','each','case','of',
+        # collections and ops
+        'list','map','dictionary','dict','set','append','pop','take','last','item','from','store','in',
+        'put','get','add','check','exists','length','size','new','get','set',
+        # comparators
+        'greater','less','equal','equals','than','or','and',
+    ]
+    canon_set = sorted(set(canonical))
+    parts = text.split()
+    out = []
+    for w in parts:
+        w_clean = w.strip()
+        # skip quoted tokens and non-alpha tokens
+        if (w_clean.startswith("'") and w_clean.endswith("'")) or (w_clean.startswith('"') and w_clean.endswith('"')):
+            out.append(w)
+            continue
+        base = re.sub(r"[^A-Za-z]", "", w_clean)
+        if len(base) >= 4 and base.isalpha():
+            match = difflib.get_close_matches(base.lower(), canon_set, n=1, cutoff=0.92)
+            if match:
+                # replace only the alphabetic core; keep surrounding punctuation
+                rep = match[0]
+                w2 = re.sub(base + r"$", rep, w_clean, flags=re.I)
+                out.append(w2)
+                continue
+        out.append(w)
+    return ' '.join(out)
+
+# --------- Config-driven synonyms (YAML) ---------
+_SYN_MAP = None
+_SYN_MTIME = None  # can be tuple
+_SYN_PATH = None   # can be tuple
+def _synonym_paths():
+    here = os.path.abspath(os.path.dirname(__file__))
+    cfg_dir = os.path.abspath(os.path.join(here, '..', 'config'))
+    cwd_dir = os.path.abspath(os.getcwd())
+    # Merge order (earlier can be overridden by later):
+    # 1) config/synonyms.generated.yml (generated suggestions)
+    # 2) config/synonyms.yml (curated defaults)
+    # 3) CWD synonyms.generated.yml
+    # 4) CWD synonyms.yml (highest precedence)
+    return [
+        os.path.join(cfg_dir, 'synonyms.generated.yml'),
+        os.path.join(cfg_dir, 'synonyms.yml'),
+        os.path.join(cwd_dir, 'synonyms.generated.yml'),
+        os.path.join(cwd_dir, 'synonyms.yml'),
+    ]
+
+def _load_synonyms_yaml():
+    global _SYN_MAP, _SYN_MTIME, _SYN_PATH
+    try:
+        paths = [p for p in _synonym_paths() if os.path.exists(p)]
+        if not paths:
+            _SYN_MAP = _SYN_MAP or {}
+            return _SYN_MAP
+        fingerprint = tuple((p, os.path.getmtime(p)) for p in paths)
+        if _SYN_PATH == fingerprint and _SYN_MTIME == fingerprint and _SYN_MAP is not None:
+            return _SYN_MAP
+        try:
+            import yaml as _yaml
+        except Exception:
+            return _SYN_MAP or {}
+        mapping = {}
+        for path in paths:
+            try:
+                data = _yaml.safe_load(open(path, 'r')) or {}
+            except Exception:
+                continue
+            if isinstance(data, dict):
+                # Interpret a single rule {from: X, to: Y}
+                if 'from' in data and 'to' in data and len(data) <= 2:
+                    fr = str(data.get('from', '')).strip().lower()
+                    to = str(data.get('to', '')).strip().lower()
+                    if fr and to and fr not in ('to','from'):
+                        mapping[fr] = to
+                else:
+                    for k, v in data.items():
+                        if isinstance(k, str) and isinstance(v, str):
+                            if k.lower().strip() in ('to', 'from'):
+                                continue
+                            mapping[k.lower()] = v.lower()
+            elif isinstance(data, list):
+                for row in data:
+                    if isinstance(row, dict) and 'from' in row and 'to' in row:
+                        fr = str(row['from']).lower().strip()
+                        to = str(row['to']).lower().strip()
+                        if fr and to and fr not in ('to','from'):
+                            mapping[fr] = to
+        _SYN_MAP, _SYN_MTIME, _SYN_PATH = mapping, fingerprint, fingerprint
+        return _SYN_MAP
+    except Exception:
+        return _SYN_MAP or {}
+
+
+def _canonical_variants(s: str) -> list:
+    """Produce increasingly aggressive normalized variants for matching.
+    Order: original, canonicalized(lower), spaCy-lemma+canonical.
+    """
+    outs = []
+    try:
+        if s and s not in outs:
+            outs.append(s)
+        low = s.lower()
+        if low and low not in outs:
+            outs.append(low)
+        canon = _canonicalize_synonyms(low)
+        if canon and canon not in outs:
+            outs.append(canon)
+        try:
+            norm = _normalize_text_with_spacy(s)
+            canon2 = _canonicalize_synonyms(norm)
+            if canon2 and canon2 not in outs:
+                outs.append(canon2)
+        except Exception:
+            pass
+    except Exception:
+        outs = [s]
+    return outs
 
 
 def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug: bool = True):
@@ -198,6 +384,76 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             raw2 = lines[i2]
             line2 = raw2.strip()
             low2 = line2.lower()
+            # repeat <n> times:
+            mrep = re.match(r"^repeat\s+(\w+|\d+)\s+times:$", low2)
+            if mrep:
+                count_tok = mrep.group(1)
+                cur_indent = indent_of(raw2)
+                body = []
+                i2 += 1
+                while i2 < len(lines):
+                    r = lines[i2]
+                    if r.strip() == '':
+                        i2 += 1; continue
+                    if indent_of(r) <= cur_indent:
+                        break
+                    body.append(r)
+                    i2 += 1
+                # hidden loop counter symbol unique per loop
+                hidden_sym = f"__rep_{_new_label('CNT')}"
+                Lstart = _new_label('REP')
+                Lend = _new_label('ENDREP')
+                # init counter = 0
+                instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('STORE_NAME', sym_idx(hidden_sym))]
+                # loop start and condition: counter < N
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(hidden_sym))]
+                if re.fullmatch(r"\-?\d+", count_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(count_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(count_tok)))]
+                instrs += [('LT',), ('JUMP_IF_FALSE', Lend)]
+                # body
+                _, _, b_ins, _ = _compile_lines_blocks(body)
+                instrs += b_ins
+                # increment and jump back
+                instrs += [('LOAD_NAME', sym_idx(hidden_sym)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(hidden_sym)), ('JUMP', Lstart), ('LABEL', Lend)]
+                continue
+            # for <var> from <a> to <b>:
+            mrange = re.match(r"^for\s+(\w+)\s+from\s+(\w+|\-?\d+)\s+to\s+(\w+|\-?\d+)\s*:$", low2)
+            if mrange:
+                var_name, start_tok, end_tok = mrange.group(1), mrange.group(2), mrange.group(3)
+                cur_indent = indent_of(raw2)
+                body = []
+                i2 += 1
+                while i2 < len(lines):
+                    r = lines[i2]
+                    if r.strip() == '':
+                        i2 += 1; continue
+                    if indent_of(r) <= cur_indent:
+                        break
+                    body.append(r)
+                    i2 += 1
+                Lstart = _new_label('FORR')
+                Lend = _new_label('ENDFORR')
+                # init i = start
+                if re.fullmatch(r"\-?\d+", start_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(start_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(start_tok)))]
+                instrs += [('STORE_NAME', sym_idx(var_name))]
+                # loop start: i <= end (inclusive)
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(var_name))]
+                if re.fullmatch(r"\-?\d+", end_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(end_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(end_tok)))]
+                instrs += [('LE',), ('JUMP_IF_FALSE', Lend)]
+                # body
+                _, _, b_ins, _ = _compile_lines_blocks(body)
+                instrs += b_ins
+                # i = i + 1; jump back
+                instrs += [('LOAD_NAME', sym_idx(var_name)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(var_name)), ('JUMP', Lstart), ('LABEL', Lend)]
+                continue
             # for each <var> in list <name>:
             mfe = re.match(r"^for each\s+(\w+)\s+in list\s+(\w+):$", low2)
             if mfe:
@@ -215,7 +471,12 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
                     i2 += 1
                 Lstart = _new_label('FOR')
                 Lend = _new_label('ENDFOR')
-                instrs += [('LOAD_NAME', sym_idx(lst)), ('ITER_NEW',), ('LABEL', Lstart), ('ITER_HAS_NEXT',), ('JUMP_IF_FALSE', Lend), ('ITER_NEXT',), ('STORE_NAME', sym_idx(itvar))]
+                hidden_it = f"__it_{_new_label('I')}"
+                # iterator setup and store into hidden symbol
+                instrs += [('LOAD_NAME', sym_idx(lst)), ('ITER_NEW',), ('STORE_NAME', sym_idx(hidden_it))]
+                # loop
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_HAS_NEXT',), ('JUMP_IF_FALSE', Lend),
+                           ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_NEXT',), ('STORE_NAME', sym_idx(itvar))]
                 # compile body
                 _, _, b_ins, _ = _compile_lines_blocks(body)
                 instrs += b_ins + [('JUMP', Lstart), ('LABEL', Lend)]
@@ -310,7 +571,11 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             i2 += 1
         return None, None, instrs, None
 
-    # simple function parser: "Define function NAME(args)", body until "End function"
+    # Optional fuzzy hints prolog
+    if os.getenv('EP_FUZZY', '0') == '1' and os.getenv('EP_FUZZY_HINTS', '1') == '1':
+        main_instrs += [('BUILD_LIST', 0), ('STORE_NAME', sym_idx('_hints'))]
+
+    # simple function parser: "Define function NAME(args)", body until "End function" (with synonyms)
     i = 0
     while i < len(english_lines):
         raw = english_lines[i]
@@ -320,11 +585,11 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             i += 1
             continue
 
-        # function start
-        m = re.match(r"define function\s+(\w+)(?:\s*\(([^)]*)\))?\s*$", low)
+        # function start (synonyms for verb and noun)
+        m = re.match(r"^(define|create|build|make)\s+(function|procedure|routine|operation|op)\s+(\w+)(?:\s*\(([^)]*)\))?\s*$", low)
         if m:
-            fname = m.group(1)
-            params_raw = (m.group(2) or '').strip()
+            fname = m.group(3)
+            params_raw = (m.group(4) or '').strip()
             param_syms = []
             if params_raw:
                 for p in [x.strip() for x in params_raw.split(',') if x.strip()]:
@@ -334,12 +599,12 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             while i < len(english_lines):
                 raw_line = english_lines[i]
                 l2s = raw_line.strip()
-                if l2s.lower() == 'end function':
+                if re.fullmatch(r"end\s+(function|procedure|routine|operation|op)", l2s.lower()):
                     break
                 # Preserve indentation for colon/indent blocks inside functions
                 body.append(raw_line)
                 i += 1
-            if i >= len(english_lines) or english_lines[i].strip().lower() != 'end function':
+            if i >= len(english_lines) or not re.fullmatch(r"end\s+(function|procedure|routine|operation|op)", english_lines[i].strip().lower()):
                 raise ValueError("Unterminated function definition")
             # compile body recursively with colon blocks
             _, _, f_instrs, _ = _compile_lines_blocks(body)
@@ -452,15 +717,135 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             main_instrs += b_ins + [('JUMP', Lstart), ('LABEL', Lend)]
             continue
 
+        # Colon/indent: for each <var> in list <name>:
+        m = re.match(r"^for each\s+(\w+)\s+in list\s+(\w+):$", low)
+        if m:
+            current_indent = indent_of(raw)
+            itvar, lst = m.group(1), m.group(2)
+            body = []
+            i += 1
+            while i < len(english_lines):
+                r2 = english_lines[i]
+                if r2.strip() == '':
+                    i += 1; continue
+                if indent_of(r2) <= current_indent:
+                    break
+                body.append(r2)
+                i += 1
+            Lstart = _new_label('FOR')
+            Lend = _new_label('ENDFOR')
+            hidden_it = f"__it_{_new_label('I')}"
+            main_instrs += [('LOAD_NAME', sym_idx(lst)), ('ITER_NEW',), ('STORE_NAME', sym_idx(hidden_it))]
+            main_instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_HAS_NEXT',), ('JUMP_IF_FALSE', Lend), ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_NEXT',), ('STORE_NAME', sym_idx(itvar))]
+            _, _, b_ins, _ = _compile_lines_blocks(body)
+            main_instrs += b_ins + [('JUMP', Lstart), ('LABEL', Lend)]
+            continue
+
+        # Colon/indent: repeat <n> times
+        m = re.match(r"^repeat\s+(\w+|\d+)\s+times:$", low)
+        if m:
+            current_indent = indent_of(raw)
+            count_tok = m.group(1)
+            body = []
+            i += 1
+            while i < len(english_lines):
+                r2 = english_lines[i]
+                if r2.strip() == '':
+                    i += 1; continue
+                if indent_of(r2) <= current_indent:
+                    break
+                body.append(r2)
+                i += 1
+            hidden_sym = f"__rep_{_new_label('CNT')}"
+            Lstart = _new_label('REP')
+            Lend = _new_label('ENDREP')
+            main_instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('STORE_NAME', sym_idx(hidden_sym))]
+            main_instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(hidden_sym))]
+            if re.fullmatch(r"\-?\d+", count_tok):
+                main_instrs += [('LOAD_CONST', const_idx(CT_INT, int(count_tok)))]
+            else:
+                main_instrs += [('LOAD_NAME', sym_idx(str(count_tok)))]
+            main_instrs += [('LT',), ('JUMP_IF_FALSE', Lend)]
+            _, _, b_ins, _ = _compile_lines_blocks(body)
+            main_instrs += b_ins
+            main_instrs += [('LOAD_NAME', sym_idx(hidden_sym)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(hidden_sym)), ('JUMP', Lstart), ('LABEL', Lend)]
+            continue
+
+        # Colon/indent: for <var> from <a> to <b>
+        m = re.match(r"^for\s+(\w+)\s+from\s+(\w+|\-?\d+)\s+to\s+(\w+|\-?\d+)\s*:$", low)
+        if m:
+            current_indent = indent_of(raw)
+            var_name, start_tok, end_tok = m.group(1), m.group(2), m.group(3)
+            body = []
+            i += 1
+            while i < len(english_lines):
+                r2 = english_lines[i]
+                if r2.strip() == '':
+                    i += 1; continue
+                if indent_of(r2) <= current_indent:
+                    break
+                body.append(r2)
+                i += 1
+            Lstart = _new_label('FORR')
+            Lend = _new_label('ENDFORR')
+            if re.fullmatch(r"\-?\d+", start_tok):
+                main_instrs += [('LOAD_CONST', const_idx(CT_INT, int(start_tok)))]
+            else:
+                main_instrs += [('LOAD_NAME', sym_idx(str(start_tok)))]
+            main_instrs += [('STORE_NAME', sym_idx(var_name))]
+            main_instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(var_name))]
+            if re.fullmatch(r"\-?\d+", end_tok):
+                main_instrs += [('LOAD_CONST', const_idx(CT_INT, int(end_tok)))]
+            else:
+                main_instrs += [('LOAD_NAME', sym_idx(str(end_tok)))]
+            main_instrs += [('LE',), ('JUMP_IF_FALSE', Lend)]
+            _, _, b_ins, _ = _compile_lines_blocks(body)
+            main_instrs += b_ins
+            main_instrs += [('LOAD_NAME', sym_idx(var_name)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(var_name)), ('JUMP', Lstart), ('LABEL', Lend)]
+            continue
+
         # otherwise compile into main (with simple control-flow lowering)
         lowered = _compile_stmt_with_cf(line, constants, symbols)
         if lowered is not None:
             main_instrs += lowered
             instr_line_map.extend([i+1] * len(lowered))
         else:
-            _, _, instrs, _ = _compile_line(line, constants, symbols)
-            main_instrs += instrs
-            instr_line_map.extend([i+1] * len(instrs))
+            compiled = None
+            try:
+                _, _, instrs, _ = _compile_line(line, constants, symbols)
+                compiled = instrs
+            except Exception:
+                pass
+            used_cand = None
+            if compiled is None and os.getenv('EP_FUZZY', '0') == '1':
+                for cand in _canonical_variants(line):
+                    try:
+                        l2 = _compile_stmt_with_cf(cand, constants, symbols)
+                        if l2 is not None:
+                            compiled = l2; used_cand = cand
+                            break
+                        _, _, instrs, _ = _compile_line(cand, constants, symbols)
+                        compiled = instrs; used_cand = cand
+                        break
+                    except Exception:
+                        continue
+            if compiled is None:
+                if os.getenv('EP_FUZZY', '0') == '1':
+                    # Log hint into _hints list instead of printing
+                    if os.getenv('EP_FUZZY_HINTS', '1') == '1':
+                        main_instrs += [('LOAD_NAME', sym_idx('_hints')), ('LOAD_CONST', const_idx(CT_STR, f"Unknown: {line}")), ('LIST_APPEND',), ('STORE_NAME', sym_idx('_hints'))]
+                        instr_line_map.extend([i+1] * 4)
+                    # else: silent no-op
+                else:
+                    # strict mode: surface error
+                    raise ValueError(f"Don't understand: {line}")
+            else:
+                main_instrs += compiled
+                instr_line_map.extend([i+1] * len(compiled))
+                # If we used a canonical variant different from user input, add a gentle hint
+                if used_cand and os.getenv('EP_FUZZY', '0') == '1' and os.getenv('EP_FUZZY_HINTS', '1') == '1' and used_cand.strip() != line.strip():
+                    main_instrs += [('LOAD_NAME', sym_idx('_hints')), ('LOAD_CONST', const_idx(CT_STR, f"Normalized: {line} -> {used_cand}")), ('LIST_APPEND',), ('STORE_NAME', sym_idx('_hints'))]
+                    instr_line_map.extend([i+1] * 4)
         i += 1
 
     # Optional typed IR pre-verify hook (scaffold)
@@ -502,8 +887,35 @@ def _compile_lines(lines, constants, symbols):
         if lowered is not None:
             instrs += lowered
         else:
-            _, _, ins, _ = _compile_line(line, constants, symbols)
-            instrs += ins
+            compiled = None
+            try:
+                _, _, ins, _ = _compile_line(line, constants, symbols)
+                compiled = ins
+            except Exception:
+                pass
+            used_cand = None
+            if compiled is None and os.getenv('EP_FUZZY', '0') == '1':
+                for cand in _canonical_variants(line):
+                    try:
+                        l2 = _compile_stmt_with_cf(cand, constants, symbols)
+                        if l2 is not None:
+                            compiled = l2; used_cand = cand
+                            break
+                        _, _, ins, _ = _compile_line(cand, constants, symbols)
+                        compiled = ins; used_cand = cand
+                        break
+                    except Exception:
+                        continue
+            if compiled is None:
+                if os.getenv('EP_FUZZY', '0') == '1':
+                    if os.getenv('EP_FUZZY_HINTS', '1') == '1':
+                        instrs += [('LOAD_NAME', _ensure_sym(symbols, '_hints')), ('LOAD_CONST', _const_index(constants, CT_STR, f"Unknown: {line}")), ('LIST_APPEND',), ('STORE_NAME', _ensure_sym(symbols, '_hints'))]
+                else:
+                    raise ValueError(f"Don't understand: {line}")
+            else:
+                instrs += compiled
+                if used_cand and os.getenv('EP_FUZZY', '0') == '1' and os.getenv('EP_FUZZY_HINTS', '1') == '1' and used_cand.strip() != line.strip():
+                    instrs += [('LOAD_NAME', _ensure_sym(symbols, '_hints')), ('LOAD_CONST', _const_index(constants, CT_STR, f"Normalized: {line} -> {used_cand}")), ('LIST_APPEND',), ('STORE_NAME', _ensure_sym(symbols, '_hints'))]
     return None, None, instrs, None
 
 
@@ -555,53 +967,148 @@ def _compile_line(line, constants, symbols):
 
     # (helpers moved to top of function)
 
-    m = re.match(r"(?:set|create a variable called)\s+(\w+)\s+(?:and set it to|to|as)\s+(.+)$", low)
+    # Multi-variable declaration/assignment: set x and y to 2 and 3
+    m = re.match(r"^(?:set|create(?: a)? variables?(?: called)?)\s+(.+?)\s+(?:and set (?:it|them) to|to|as)\s+(.+)$", low)
+    if m:
+        names_raw = m.group(1).strip().rstrip('.')
+        vals_raw  = m.group(2).strip().rstrip('.')
+        # split names by comma or 'and'
+        names = [n.strip() for n in re.split(r"\s*(?:,|and)\s*", names_raw) if n.strip()]
+        # split values by comma first, else 'and'
+        if ',' in vals_raw:
+            vals = [v.strip() for v in vals_raw.split(',') if v.strip()]
+        else:
+            vals = [v.strip() for v in re.split(r"\s+and\s+", vals_raw) if v.strip()]
+        if not names:
+            return None, None, instrs, None
+        if len(vals) == 0:
+            raise ValueError("No values provided for assignment")
+        # broadcast or pairwise
+        if len(vals) not in (1, len(names)):
+            raise ValueError("Variable/value count mismatch")
+        for idx, nm in enumerate(names):
+            v = vals[0] if len(vals) == 1 else vals[idx]
+            if v.isdigit() or re.fullmatch(r"\-?\d+", v):
+                cidx = const_idx_local(CT_INT, int(v))
+                instrs += [('LOAD_CONST', cidx)]
+            elif (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                v2 = v[1:-1]
+                cidx = const_idx_local(CT_STR, v2)
+                instrs += [('LOAD_CONST', cidx)]
+            else:
+                # identifier-like -> variable ref; else treat as raw string (paths/URLs)
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", v):
+                    instrs += [('LOAD_NAME', sym_idx_local(v))]
+                else:
+                    cidx = const_idx_local(CT_STR, v)
+                    instrs += [('LOAD_CONST', cidx)]
+            instrs += [('STORE_NAME', sym_idx_local(nm))]
+        return None, None, instrs, None
+
+    # Special-case: assignment with unquoted path/URL should be literal string, not variable ref
+    m = re.match(r"(?:set|create a variable called)\s+(\w+)\s+(?:and set it to|to|as)\s+(.+)$", line, re.I)
     if m:
         name = m.group(1)
-        val  = m.group(2).strip()
-        if val.isdigit():
-            cidx = const_idx_local(CT_INT, int(val))
+        val_raw  = m.group(2).strip()
+        # numeric
+        if val_raw.isdigit() or re.fullmatch(r"\-?\d+", val_raw):
+            cidx = const_idx_local(CT_INT, int(val_raw))
             instrs += [('LOAD_CONST', cidx)]
-        elif (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
-            v2 = val[1:-1]
+        # quoted string
+        elif (val_raw.startswith('"') and val_raw.endswith('"')) or (val_raw.startswith("'") and val_raw.endswith("'")):
+            v2 = val_raw[1:-1]
             cidx = const_idx_local(CT_STR, v2)
             instrs += [('LOAD_CONST', cidx)]
         else:
-            # treat as variable reference
-            instrs += [('LOAD_NAME', sym_idx_local(val))]
+            # if identifier-like, treat as variable ref; else treat as raw string (paths/URLs)
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", val_raw):
+                instrs += [('LOAD_NAME', sym_idx_local(val_raw))]
+            else:
+                cidx = const_idx_local(CT_STR, val_raw)
+                instrs += [('LOAD_CONST', cidx)]
         instrs += [('STORE_NAME', sym_idx_local(name))]
         return None, None, instrs, None
 
-    m = re.match(r"add\s+(\w+)\s+and\s+(\w+|\d+)\s+and store (?:the )?(?:result|outcome)\s+in\s+(\w+)$", low)
+    # Arithmetic with dotted operands and destination support
+    def _emit_load_token(tok: str):
+        t = tok.strip()
+        md = re.fullmatch(r"(\w+)\.(\w+)", t)
+        if md:
+            obj, fld = md.group(1), md.group(2)
+            instrs.append(('LOAD_NAME', sym_idx_local(obj)))
+            instrs.append(('GETFIELD', sym_idx_local(fld)))
+        elif t.isdigit() or re.fullmatch(r"\-?\d+", t):
+            instrs.append(('LOAD_CONST', const_idx_local(CT_INT, int(t))))
+        elif (t.startswith('"') and t.endswith('"')) or (t.startswith("'") and t.endswith("'")):
+            instrs.append(('LOAD_CONST', const_idx_local(CT_STR, t[1:-1])))
+        else:
+            instrs.append(('LOAD_NAME', sym_idx_local(t)))
+
+    def _store_result_to(dst_tok: str):
+        t = dst_tok.strip()
+        md = re.fullmatch(r"(\w+)\.(\w+)", t)
+        if not md:
+            instrs.append(('STORE_NAME', sym_idx_local(t)))
+        else:
+            obj, fld = md.group(1), md.group(2)
+            tmp = f"__tmp{len(symbols)}"
+            instrs.append(('STORE_NAME', sym_idx_local(tmp)))
+            instrs.append(('LOAD_NAME', sym_idx_local(obj)))
+            instrs.append(('LOAD_NAME', sym_idx_local(tmp)))
+            instrs.append(('SETFIELD', sym_idx_local(fld)))
+
+    m = re.match(r"add\s+(.+?)\s+and\s+(.+?)\s+and store (?:the )?(?:result|outcome)\s+in\s+(.+)$", line, re.I)
     if m:
-        a, b, dst = m.group(1), m.group(2), m.group(3)
-        if a.isdigit():
-            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(a)))]
-        else:
-            instrs += [('LOAD_NAME', sym_idx_local(a))]
-        if b.isdigit():
-            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(b)))]
-        else:
-            instrs += [('LOAD_NAME', sym_idx_local(b))]
-        instrs += [('ADD',)]
-        instrs += [('STORE_NAME', sym_idx_local(dst))]
+        a, b, dst = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+        _emit_load_token(a)
+        _emit_load_token(b)
+        instrs.append(('ADD',))
+        _store_result_to(dst)
         return None, None, instrs, None
 
     for opname, opcode in (("subtract","SUB"),("multiply","MUL"),("divide","DIV")):
-        m = re.match(fr"{opname}\s+(\w+|\d+)\s+(?:and|by)\s+(\w+|\d+)\s+and store (?:the )?(?:result|outcome)\s+in\s+(\w+)$", low)
+        m = re.match(fr"{opname}\s+(.+?)\s+(?:and|by)\s+(.+?)\s+and store (?:the )?(?:result|outcome)\s+in\s+(.+)$", line, re.I)
         if m:
-            a, b, dst = m.group(1), m.group(2), m.group(3)
-            if a.isdigit():
-                instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(a)))]
-            else:
-                instrs += [('LOAD_NAME', sym_idx_local(a))]
-            if b.isdigit():
-                instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(b)))]
-            else:
-                instrs += [('LOAD_NAME', sym_idx_local(b))]
-            instrs += [(opcode,)]
-            instrs += [('STORE_NAME', sym_idx_local(dst))]
+            a, b, dst = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+            _emit_load_token(a)
+            _emit_load_token(b)
+            instrs.append((opcode,))
+            _store_result_to(dst)
             return None, None, instrs, None
+
+    # Synonym forms with implicit store-back to the left operand
+    m = re.match(r"^(increase|increment|add)\s+(.+?)\s+by\s+(.+?)$", line, re.I)
+    if m:
+        dst, src = m.group(2).strip(), m.group(3).strip()
+        _emit_load_token(dst)
+        _emit_load_token(src)
+        instrs.append(('ADD',))
+        _store_result_to(dst)
+        return None, None, instrs, None
+    m = re.match(r"^(decrease|decrement|reduce|subtract)\s+(.+?)\s+by\s+(.+?)$", line, re.I)
+    if m:
+        dst, src = m.group(2).strip(), m.group(3).strip()
+        _emit_load_token(dst)
+        _emit_load_token(src)
+        instrs.append(('SUB',))
+        _store_result_to(dst)
+        return None, None, instrs, None
+    m = re.match(r"^(multiply|times)\s+(.+?)\s+(?:by|with)\s+(.+?)$", line, re.I)
+    if m:
+        dst, src = m.group(2).strip(), m.group(3).strip()
+        _emit_load_token(dst)
+        _emit_load_token(src)
+        instrs.append(('MUL',))
+        _store_result_to(dst)
+        return None, None, instrs, None
+    m = re.match(r"^(divide)\s+(.+?)\s+by\s+(.+?)$", line, re.I)
+    if m:
+        dst, src = m.group(2).strip(), m.group(3).strip()
+        _emit_load_token(dst)
+        _emit_load_token(src)
+        instrs.append(('DIV',))
+        _store_result_to(dst)
+        return None, None, instrs, None
 
     m = re.match(r"concatenate\s+(.+)\s+and\s+(.+)\s+and store in\s+(\w+)$", low)
     if m:
@@ -755,6 +1262,13 @@ def _compile_line(line, constants, symbols):
         instrs += [('STORE_NAME', sym_idx_local(dst))]
         return None, None, instrs, None
 
+    # return <obj>.<field>
+    m = re.match(r"return\s+(\w+)\.(\w+)$", line, re.I)
+    if m:
+        obj, field = m.group(1), m.group(2)
+        instrs += [('LOAD_NAME', sym_idx_local(obj)), ('GETFIELD', sym_idx_local(field)), ('RETURN',)]
+        return None, None, instrs, None
+
     m = re.match(r"(?:print|show|display)\s+(.+)$", low)
     if m:
         what = m.group(1).strip()
@@ -766,6 +1280,24 @@ def _compile_line(line, constants, symbols):
             else:
                 instrs += [('LOAD_NAME', sym_idx_local(what))]
         instrs += [('PRINT',)]
+        return None, None, instrs, None
+
+    # return [expr] (support dotted field e.g., return self.value)
+    m = re.match(r"return\s*(.*)$", line, re.I)
+    if m:
+        expr = m.group(1).strip()
+        if expr:
+            md = re.fullmatch(r"(\w+)\.(\w+)$", expr)
+            if md:
+                obj, field = md.group(1), md.group(2)
+                instrs += [('LOAD_NAME', sym_idx_local(obj)), ('GETFIELD', sym_idx_local(field))]
+            elif expr.isdigit() or re.fullmatch(r"\-?\d+", expr):
+                instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(expr)))]
+            elif (expr.startswith('"') and expr.endswith('"')) or (expr.startswith("'") and expr.endswith("'")):
+                instrs += [('LOAD_CONST', const_idx_local(CT_STR, expr[1:-1]))]
+            else:
+                instrs += [('LOAD_NAME', sym_idx_local(expr))]
+        instrs += [('RETURN',)]
         return None, None, instrs, None
 
     m = re.match(r"create a list called\s+(\w+)\s+with values\s+(.+)$", low)
@@ -803,10 +1335,40 @@ def _compile_line(line, constants, symbols):
         instrs += [('BUILD_MAP', 0), ('STORE_NAME', sym_idx_local(name))]
         return None, None, instrs, None
 
+    # create a dictionary called <name>
+    m = re.match(r"create a (?:dict|dictionary) called\s+(\w+)$", line, re.I)
+    if m:
+        name = m.group(1)
+        instrs += [('BUILD_MAP', 0), ('STORE_NAME', sym_idx_local(name))]
+        return None, None, instrs, None
+
     # map put <map> <key> <val> store in <map>
     m = re.match(r"map put\s+(\w+)\s+(.+)\s+(.+)\s+store in\s+(\w+)$", low)
     if m:
         mp, key, val, dst = m.group(1), m.group(2).strip(), m.group(3).strip(), m.group(4)
+        instrs += [('LOAD_NAME', sym_idx_local(mp))]
+        # key
+        if key.isdigit():
+            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(key)))]
+        elif (key.startswith("'") and key.endswith("'")) or (key.startswith('"') and key.endswith('"')):
+            instrs += [('LOAD_CONST', const_idx_local(CT_STR, key[1:-1]))]
+        else:
+            instrs += [('LOAD_NAME', sym_idx_local(key))]
+        # value
+        if val.isdigit():
+            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(val)))]
+        elif (val.startswith("'") and val.endswith("'")) or (val.startswith('"') and val.endswith('"')):
+            instrs += [('LOAD_CONST', const_idx_local(CT_STR, val[1:-1]))]
+        else:
+            instrs += [('LOAD_NAME', sym_idx_local(val))]
+        instrs += [('MAP_PUT',)]
+        instrs += [('STORE_NAME', sym_idx_local(dst))]
+        return None, None, instrs, None
+
+    # put <key> maps to <val> in <map> [store in <dst>]
+    m = re.match(r"put\s+(.+)\s+maps?\s+to\s+(.+)\s+in\s+(\w+)(?:\s+store in\s+(\w+))?$", line, re.I)
+    if m:
+        key, val, mp, dst = m.group(1).strip(), m.group(2).strip(), m.group(3), m.group(4) or m.group(3)
         instrs += [('LOAD_NAME', sym_idx_local(mp))]
         # key
         if key.isdigit():
@@ -856,8 +1418,31 @@ def _compile_line(line, constants, symbols):
         instrs += [('STORE_NAME', sym_idx_local(dst))]
         return None, None, instrs, None
 
+    # append <val> to list <name> (implicit store-back)
+    m = re.match(r"append\s+(.+)\s+to\s+(?:list\s+)?(\w+)$", line, re.I)
+    if m:
+        val, name = m.group(1).strip(), m.group(2)
+        instrs += [('LOAD_NAME', sym_idx_local(name))]
+        if val.isdigit():
+            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(val)))]
+        elif (val.startswith("'") and val.endswith("'")) or (val.startswith('"') and val.endswith('"')):
+            instrs += [('LOAD_CONST', const_idx_local(CT_STR, val[1:-1]))]
+        else:
+            instrs += [('LOAD_NAME', sym_idx_local(val))]
+        instrs += [('LIST_APPEND',)]
+        instrs += [('STORE_NAME', sym_idx_local(name))]
+        return None, None, instrs, None
+
     # pop from list <name> store in <dst>
     m = re.match(r"pop from list\s+(\w+)\s+store in\s+(\w+)$", low)
+    if m:
+        name, dst = m.group(1), m.group(2)
+        instrs += [('LOAD_NAME', sym_idx_local(name)), ('LIST_POP',)]
+        instrs += [('STORE_NAME', sym_idx_local(dst))]
+        return None, None, instrs, None
+
+    # take the last item from list <name> store in <dst>
+    m = re.match(r"(?:take|get)\s+(?:the\s+)?(?:last|end)\s+item\s+from\s+list\s+(\w+)\s+store in\s+(\w+)$", line, re.I)
     if m:
         name, dst = m.group(1), m.group(2)
         instrs += [('LOAD_NAME', sym_idx_local(name)), ('LIST_POP',)]
@@ -897,6 +1482,23 @@ def _compile_line(line, constants, symbols):
     if m:
         val, name, dst = m.group(1), m.group(2), m.group(3)
         # push set first, then value (SET_CONTAINS pops value then set)
+        instrs += [('LOAD_NAME', sym_idx_local(name))]
+        if val.isdigit():
+            instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(val)))]
+        elif (val.startswith("'") and val.endswith("'")) or (val.startswith('"') and val.endswith('"')):
+            instrs += [('LOAD_CONST', const_idx_local(CT_STR, val[1:-1]))]
+        else:
+            instrs += [('LOAD_NAME', sym_idx_local(val))]
+        instrs += [('SET_CONTAINS',)]
+        if dst not in symbols:
+            symbols.append(dst)
+        instrs += [('STORE_NAME', sym_idx_local(dst))]
+        return None, None, instrs, None
+
+    # check if <val> exists in set <name> store in <dst>
+    m = re.match(r"check if\s+(\w+|\d+|'[^']*'|\"[^\"]*\")\s+exists in set\s+(\w+)\s+store in\s+(\w+)$", line, re.I)
+    if m:
+        val, name, dst = m.group(1), m.group(2), m.group(3)
         instrs += [('LOAD_NAME', sym_idx_local(name))]
         if val.isdigit():
             instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(val)))]
@@ -1050,6 +1652,24 @@ def _compile_line(line, constants, symbols):
         instrs += [('RETURN',)]
         return None, None, instrs, None
 
+    # call function <name> with a, b [and] store in <dst>
+    m = re.match(r"(?:call|invoke|run)\s+(?:function|procedure|routine|operation|op)\s+(\w+)(?:\s+with\s+(.+?))?\s+(?:and\s+)?store\s+in\s+(\w+)$", line, re.I)
+    if m:
+        fname, args_s, dst = m.group(1), (m.group(2) or '').strip(), m.group(3)
+        argc = 0
+        if args_s:
+            for a in [x.strip() for x in args_s.split(',') if x.strip()]:
+                if a.isdigit():
+                    instrs += [('LOAD_CONST', const_idx_local(CT_INT, int(a)))]
+                elif (a.startswith("'") and a.endswith("'")) or (a.startswith('"') and a.endswith('"')):
+                    instrs += [('LOAD_CONST', const_idx_local(CT_STR, a[1:-1]))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx_local(a))]
+                argc += 1
+        instrs += [('CALL', sym_idx_local(fname), argc)]
+        instrs += [('STORE_NAME', sym_idx_local(dst))]
+        return None, None, instrs, None
+
     # OOP usage lowering (simple forms)
     # new <ClassName> store in <var>
     m = re.match(r"new\s+(\w+)\s+store in\s+(\w+)$", line, re.I)
@@ -1063,20 +1683,22 @@ def _compile_line(line, constants, symbols):
     m = re.match(r"new\s+(\w+)\s+with args\s+([^)]*)\s+store in\s+(\w+)$", line, re.I)
     if m:
         cname, args_s, dst = m.group(1), m.group(2).strip(), m.group(3)
-        instrs += [('NEW', _ensure_sym(symbols, cname))]
-        # call constructor __init__(self, ...)
+        # allocate and store object first
+        instrs += [('NEW', _ensure_sym(symbols, cname)), ('STORE_NAME', _ensure_sym(symbols, dst))]
+        # load object and call constructor __init__(self, ...)
+        instrs += [('LOAD_NAME', _ensure_sym(symbols, dst))]
         argc = 0
         if args_s:
             for a in [x.strip() for x in args_s.split(',') if x.strip()]:
                 if a.isdigit():
                     instrs += [('LOAD_CONST', _const_index(constants, CT_INT, int(a)))]
                 elif (a.startswith("'") and a.endswith("'")) or (a.startswith('"') and a.endswith('"')):
-                    instrs += [('LOAD_CONST', _const_index(constants, CT_STR, a[1:-1]))]
+                    instrs += [('LOAD_CONST', _ensure_const(constants, CT_STR, a[1:-1]))] if '_ensure_const' in globals() else [('LOAD_CONST', _const_index(constants, CT_STR, a[1:-1]))]
                 else:
                     instrs += [('LOAD_NAME', _ensure_sym(symbols, a))]
                 argc += 1
         instrs += [('CALL_METHOD', _ensure_sym(symbols, '__init__'), argc)]
-        instrs += [('STORE_NAME', _ensure_sym(symbols, dst))]
+        # do not overwrite dst with constructor return (usually None)
         return None, None, instrs, None
     # set <obj>.<field> to <value>
     m = re.match(r"set\s+(\w+)\.(\w+)\s+to\s+(\w+|\d+|'[^']*'|\"[^\"]*\")$", line, re.I)
@@ -1304,22 +1926,30 @@ def _compile_class_block(lines, i, constants, symbols):
     # End method
     # End class
     header = lines[i].strip()
-    m = re.match(r"define class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+with fields:\s*(.*))?\s*$", header.lower())
+    # Accept synonyms for class and extends and fields
+    m = re.match(r"^(define|create|build|make)\s+(class|blueprint|type|object)\s+(\w+)(?:\s+(?:extends|inherits from|from)\s+(\w+))?(?:\s+with\s+(?:fields|members|properties):\s*(.*))?\s*$", header.lower())
     if not m:
         return None, i
     parts = None
     tokens = header.split()
+    # tokens: <verb> <noun> <Name> ...
     cname = tokens[2]
     base = None
-    if 'extends' in header.lower():
-    	# naive parse for base name
+    low_hdr = header.lower()
+    if ('extends' in low_hdr) or ('inherits from' in low_hdr) or re.search(r"\bfrom\b", low_hdr):
         try:
-            base = tokens[tokens.index('extends') + 1]
+            low_toks = [t.lower() for t in tokens]
+            if 'extends' in low_toks:
+                base = tokens[low_toks.index('extends') + 1]
+            elif 'inherits' in low_toks and 'from' in low_toks:
+                base = tokens[low_toks.index('from') + 1]
+            elif 'from' in low_toks:
+                base = tokens[low_toks.index('from') + 1]
         except Exception:
             base = None
     fields = []
-    if 'with fields:' in header.lower():
-        parts = header.lower().split('with fields:')[1].strip()
+    if re.search(r"with\s+(fields|members|properties):", header, flags=re.I):
+        parts = re.split(r"with\s+(?:fields|members|properties):", header, flags=re.I)[1].strip().lower()
         if parts:
             for f in [x.strip() for x in parts.split(',') if x.strip()]:
                 fields.append(_ensure_sym(symbols, f))
@@ -1329,10 +1959,11 @@ def _compile_class_block(lines, i, constants, symbols):
     i += 1
     while i < len(lines):
         ln = lines[i].strip()
-        if ln.lower() == 'end class':
+        if re.fullmatch(r"end\s+(class|blueprint|type|object)", ln.lower()):
             break
-        mm = re.match(r"method\s+(\w+)\(([^)]*)\)\s*$", ln.lower())
+        mm = re.match(r"(method|function|routine|operation|op)\s+(\w+)\(([^)]*)\)\s*$", ln.lower())
         if mm:
+            # Preserve original case of method name from source line
             mname = ln.split()[1].split('(')[0]
             params_raw = (ln[ln.find('(')+1:ln.find(')')]).strip()
             param_syms = []
@@ -1343,7 +1974,7 @@ def _compile_class_block(lines, i, constants, symbols):
             i += 1
             while i < len(lines):
                 l2 = lines[i].strip()
-                if l2.lower() == 'end method':
+                if re.fullmatch(r"end\s+(method|function|routine|operation|op)", l2.lower()):
                     break
                 body.append(l2)
                 i += 1

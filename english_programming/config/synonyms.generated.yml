@@ -1,0 +1,262 @@
+- from: push
+  to: append
+- from: insert into list
+  to: append
+- from: insert into array
+  to: append
+- from: insert into sequence
+  to: append
+- from: contains
+  to: exists in
+- from: create function
+  to: define function
+- from: build function
+  to: define function
+- from: make function
+  to: define function
+- from: end operation
+  to: end function
+- from: end procedure
+  to: end function
+- from: end routine
+  to: end function
+- from: end op
+  to: end function
+- from: call
+  to: call
+- from: invoke
+  to: call
+- from: run
+  to: call
+- from: create class
+  to: define class
+- from: make class
+  to: define class
+- from: build class
+  to: define class
+- from: function
+  to: method
+- from: routine
+  to: method
+- from: operation
+  to: method
+- from: dictionary
+  to: map
+- from: dict
+  to: map
+- from: insert into map
+  to: map put
+- from: insert into dictionary
+  to: map put
+- from: insert into dict
+  to: map put
+- from: insert into hash
+  to: map put
+- from: insert into hashtable
+  to: map put
+- from: put into map
+  to: map put
+- from: put into dictionary
+  to: map put
+- from: put into dict
+  to: map put
+- from: put into hash
+  to: map put
+- from: put into hashtable
+  to: map put
+- from: supplement
+  to: append
+- from: affix
+  to: append
+- from: tack
+  to: append
+- from: supply
+  to: append
+- from: attach
+  to: append
+- from: bind
+  to: append
+- from: bond
+  to: append
+- from: impound
+  to: append
+- from: sequester
+  to: append
+- from: confiscate
+  to: append
+- from: seize
+  to: append
+- from: addendum
+  to: append
+- from: postscript
+  to: append
+- from: supplementation
+  to: append
+- from: accessory
+  to: append
+- from: appurtenance
+  to: append
+- from: add-on
+  to: append
+- from: function
+  to: map
+- from: mathematical function
+  to: map
+- from: single-valued function
+  to: map
+- from: mapping
+  to: map
+- from: map out
+  to: map
+- from: represent
+  to: map
+- from: chromosome mapping
+  to: map
+- from: exercise set
+  to: set
+- from: stage set
+  to: set
+- from: circle
+  to: set
+- from: band
+  to: set
+- from: bent
+  to: set
+- from: hardening
+  to: set
+- from: solidifying
+  to: set
+- from: solidification
+  to: set
+- from: curing
+  to: set
+- from: seth
+  to: set
+- from: readiness
+  to: set
+- from: place
+  to: set
+- from: pose
+  to: set
+- from: position
+  to: set
+- from: determine
+  to: set
+- from: specify
+  to: set
+- from: define
+  to: set
+- from: limit
+  to: set
+- from: mark
+  to: set
+- from: prepare
+  to: set
+- from: set up
+  to: set
+- from: ready
+  to: set
+- from: gear up
+  to: set
+- from: localize
+  to: set
+- from: localise
+  to: set
+- from: go down
+  to: set
+- from: go under
+  to: set
+- from: arrange
+  to: set
+- from: plant
+  to: set
+- from: jell
+  to: set
+- from: congeal
+  to: set
+- from: typeset
+  to: set
+- from: countersink
+  to: set
+- from: lay out
+  to: set
+- from: adjust
+  to: set
+- from: correct
+  to: set
+- from: fructify
+  to: set
+- from: dress
+  to: set
+- from: coif
+  to: set
+- from: coiffe
+  to: set
+- from: coiffure
+  to: set
+- from: primed
+  to: set
+- from: fixed
+  to: set
+- from: rigid
+  to: set
+- from: located
+  to: set
+- from: placed
+  to: set
+- from: situated
+  to: set
+- from: laid
+  to: set
+- from: determined
+  to: set
+- from: dictated
+  to: set
+- from: hardened
+  to: set
+- from: collection
+  to: set
+- from: aggregation
+  to: set
+- from: accumulation
+  to: set
+- from: assemblage
+  to: set
+- from: compendium
+  to: set
+- from: solicitation
+  to: set
+- from: appeal
+  to: set
+- from: ingathering
+  to: set
+- from: collecting
+  to: set
+- from: assembling
+  to: set
+- from: group
+  to: set
+- from: grouping
+  to: set
+- from: pigeonholing
+  to: set
+- from: aggroup
+  to: set
+- from: inserts into list
+  to: append
+- from: inserted into list
+  to: append
+- from: inserting into list
+  to: append
+- from: inserts into array
+  to: append
+- from: inserted into array
+  to: append
+- from: inserting into array
+  to: append
+- from: inserts into sequence
+  to: append
+- from: inserted into sequence
+  to: append
+- from: inserting into sequence
+  to: append

@@ -1,0 +1,90 @@
+name: Deploy
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-backend-eb:
+    name: Deploy Backend to Elastic Beanstalk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create source bundle
+        run: |
+          git archive -o app.zip HEAD
+
+      - name: Upload app bundle to S3 (EB app versions bucket)
+        run: |
+          VERSION="build-$(date +%Y%m%d-%H%M%S)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/$VERSION.zip
+
+      - name: Create EB application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name ${{ secrets.EB_APP_NAME }} \
+            --version-label $VERSION \
+            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=$VERSION.zip
+
+      - name: Update EB environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name ${{ secrets.EB_ENV_NAME }} \
+            --version-label $VERSION
+
+  deploy-frontend-s3-cf:
+    name: Deploy Frontend to S3 + CloudFront
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui/english-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ui/english-ui/package-lock.json
+
+      - name: Build with API URL
+        env:
+          VITE_API_URL: ${{ secrets.API_URL }}
+        run: |
+          npm ci || npm i
+          npm run build
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync dist s3://${{ secrets.S3_BUCKET_FRONTEND }} \
+            --delete --cache-control max-age=31536000,public
+
+      - name: Create CloudFront invalidation
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/index.html" "/assets/*"

@@ -1,0 +1,12 @@
+- from: push
+  to: append
+- from: "size of"
+  to: "length of"
+- from: dictionary
+  to: map
+- from: dict
+  to: map
+- from: contains
+  to: "exists in"
+- from: "remove last item from list"
+  to: "take the last item from list"
