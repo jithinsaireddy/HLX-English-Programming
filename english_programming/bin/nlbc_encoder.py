@@ -13,17 +13,18 @@ SEC_CLASSES   = 5
 SEC_DEBUG     = 6  # optional: source mapping by instruction ordinal
 
 # opcodes
-OP_LOAD_CONST  = 0x01
-OP_LOAD_NAME   = 0x02
-OP_STORE_NAME  = 0x03
-OP_ADD         = 0x04
-OP_PRINT       = 0x05
-OP_BUILD_LIST  = 0x06
-OP_INDEX       = 0x07
-OP_BUILD_MAP   = 0x08
+OP_LOAD_CONST   = 0x01
+OP_LOAD_NAME    = 0x02
+OP_STORE_NAME   = 0x03
+OP_ADD          = 0x04
+OP_PRINT        = 0x05
+OP_BUILD_LIST   = 0x06
+OP_INDEX        = 0x07
+OP_BUILD_MAP    = 0x08
 OP_GET_ATTR     = 0x09
 OP_JUMP         = 0x0A
 OP_JUMP_IF_FALSE= 0x0B
+OP_JUMP_BACK    = 0xAD
 OP_CALL         = 0x0C
 OP_RETURN       = 0x0D
 OP_LT           = 0x0E
@@ -164,8 +165,9 @@ def assemble_code(instrs):
     for idx, ins in enumerate(instrs):
         if _is_labelled(ins):
             jump_indices.append(idx)
-    # initial assumption: 1-byte encoded offset
+    # initial assumption: 1-byte encoded offset, unsigned kind
     jump_len = {idx: 1 for idx in jump_indices}
+    jump_kind = {idx: 'unsigned' for idx in jump_indices}  # 'unsigned' for JUMP/JUMP_IF_FALSE/SETUP_CATCH(_T), 'signed' for backward
 
     def compute_layout():
         pc = 0
@@ -209,10 +211,17 @@ def assemble_code(instrs):
             else:
                 ip_after_operand = origin + 1 + assumed
             target = label_pos[label]
-            off = max(0, target - ip_after_operand)
-            needed = len(write_uleb128(off))
-            if needed != assumed:
+            off = target - ip_after_operand
+            # choose encoding based on sign
+            if off < 0:
+                needed = len(write_sleb128(off))
+                kind = 'signed'
+            else:
+                needed = len(write_uleb128(off))
+                kind = 'unsigned'
+            if needed != assumed or kind != jump_kind[idx]:
                 jump_len[idx] = needed
+                jump_kind[idx] = kind
                 changed = True
 
     # Emit with final sizes
@@ -221,7 +230,8 @@ def assemble_code(instrs):
         if ins[0] == 'LABEL':
             continue
         op = ins[0]
-        out.append(m[op])
+        # determine opcode byte (handle backward jumps specially)
+        opcode_byte = m[op]
         if _is_labelled(ins):
             # compute final offset
             pcs, label_pos = compute_layout()
@@ -229,16 +239,33 @@ def assemble_code(instrs):
             assumed = jump_len[idx]
             if op == 'SETUP_CATCH_T':
                 type_sym = int(ins[1])
-                out += write_uleb128(type_sym)
                 ip_after_operand = origin + 1 + len(write_uleb128(type_sym)) + assumed
                 label_key = ins[2]
             else:
                 ip_after_operand = origin + 1 + assumed
                 label_key = ins[1]
             target = label_pos[label_key]
-            off = max(0, target - ip_after_operand)
-            out += write_uleb128(off)
+            off = target - ip_after_operand
+            if op == 'JUMP' and off < 0:
+                # emit backward jump with signed offset
+                opcode_byte = OP_JUMP_BACK
+            # write opcode first
+            out.append(opcode_byte)
+            # then write extra operands
+            if op == 'SETUP_CATCH_T':
+                type_sym = int(ins[1])
+                out += write_uleb128(type_sym)
+            if op == 'JUMP' and off < 0:
+                out += write_sleb128(off)
+            elif op in ('JUMP','JUMP_IF_FALSE','SETUP_CATCH'):
+                out += write_uleb128(max(0, off))
+            elif op == 'SETUP_CATCH_T':
+                out += write_uleb128(max(0, off))
+            else:
+                # default
+                out += write_uleb128(max(0, off))
         else:
+            out.append(opcode_byte)
             for operand in ins[1:]:
                 out += write_uleb128(int(operand))
     return bytes(out)

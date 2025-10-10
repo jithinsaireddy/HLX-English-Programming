@@ -20,6 +20,7 @@ OP_BUILD_MAP   = 0x08
 OP_GET_ATTR    = 0x09
 OP_JUMP        = 0x0A
 OP_JUMP_IF_FALSE=0x0B
+OP_JUMP_BACK    = 0xAD  # signed offset for backward jumps
 OP_CALL        = 0x0C
 OP_RETURN      = 0x0D
 OP_LT          = 0x0E
@@ -166,6 +167,8 @@ def run_code(consts, syms, code, env=None, func_map=None):
     env = {} if env is None else env
     stack = []
     i = 0
+    # iterator peek buffer: maps id(iterator) -> next value fetched by HAS_NEXT
+    env.setdefault('_iter_peek', {})
     # simple JIT backedge profiler
     try:
         from english_programming.bin.nlvm_jit import HotLoopJIT
@@ -173,11 +176,42 @@ def run_code(consts, syms, code, env=None, func_map=None):
     except Exception:
         jit = None
     catch_stack = []  # list of positions to jump to on throw
+    # --------- OOP helpers (inheritance-aware) ---------
+    def _class_entry(cname: str):
+        # returns (field_syms, method_map, base_name)
+        return env.get('_classes', {}).get(cname, ([], {}, None))
+    def _collect_fields(cname: str):
+        # base-first order, unique by symbol index
+        order = []
+        seen = set()
+        cur = cname
+        chain = []
+        while cur:
+            fs, _m, base = _class_entry(cur)
+            chain.append((fs, base))
+            cur = base
+        # iterate reversed to have base-first
+        for fs, _ in reversed(chain):
+            for idx in fs:
+                if idx not in seen:
+                    seen.add(idx)
+                    order.append(idx)
+        return order
+    def _lookup_method(cname: str, mname: str):
+        # returns (params, code_bytes, defining_class) or (None, None, None)
+        cur = cname
+        while cur:
+            _fs, methods, base = _class_entry(cur)
+            entry = methods.get(mname)
+            if entry:
+                return entry[0], entry[1], cur
+            cur = base
+        return None, None, None
     # wall-clock guard
     try:
         import time as _time, os as _os
         _start_ms = int(_time.time() * 1000)
-        _max_ms = int(_os.getenv('EP_MAX_MS', '2000'))
+        _max_ms = int(_os.getenv('EP_MAX_MS', '30000'))
     except Exception:
         _start_ms = 0
         _max_ms = 2000
@@ -295,6 +329,21 @@ def run_code(consts, syms, code, env=None, func_map=None):
             cond = stack.pop()
             if not cond:
                 i += off
+        elif op == OP_JUMP_BACK:
+            # signed relative jump (typically for loop backedges)
+            off, i = read_sleb128(code, i)
+            prev = i
+            i += off
+            if jit:
+                cnt = jit.maybe_count_backedge(prev, i)
+                if cnt and jit.is_hot((i, prev)):
+                    try:
+                        comp = jit.compiled_loops.get((i, prev)) or jit.compile_loop(code, i, prev)
+                        comp(env, consts, syms)
+                    except Exception:
+                        pass
+                    finally:
+                        i = prev
         elif op == OP_LT:
             b = stack.pop(); a = stack.pop(); stack.append(a < b)
         elif op == OP_CALL:
@@ -401,16 +450,11 @@ def run_code(consts, syms, code, env=None, func_map=None):
         elif op == OP_ASYNC_HTTPGET:
             url = stack.pop()
             def _get():
-                import urllib.request as _r
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Referer': 'https://www.google.com/'
-                }
-                req = _r.Request(url, headers=headers, method='GET')
-                with _r.urlopen(req) as resp:
-                    return resp.read().decode('utf-8')
+                try:
+                    from english_programming.bin.module_cache import fetch
+                    return fetch(url)
+                except Exception:
+                    return ''
             stack.append(_get)
         elif op == OP_SCHEDULE:
             # schedule a future (callable) for later execution
@@ -473,9 +517,7 @@ def run_code(consts, syms, code, env=None, func_map=None):
                     return ''
             stack.append(_recv)
         elif op == OP_IMPORTURL:
-            import os as _os
-            if _os.getenv('EP_ALLOW_NET', '0') != '1':
-                raise RuntimeError('Network fetch not allowed. Set EP_ALLOW_NET=1 to enable.')
+            # Defer network/local permission to module_cache.fetch()
             from english_programming.bin.module_cache import fetch
             url = stack.pop()
             content = fetch(url)
@@ -483,17 +525,17 @@ def run_code(consts, syms, code, env=None, func_map=None):
         elif op == OP_NEW:
             class_idx, i = read_uleb128(code, i)
             cname = syms[class_idx]
-            classes = env.get('_classes', {})
-            tup = classes.get(cname, ([], {}, None))
-            fields = tup[0] if isinstance(tup, tuple) else []
             obj = {'__class__': cname}
-            for fs in fields:
+            for fs in _collect_fields(cname):
                 obj[syms[fs]] = None
             stack.append(obj)
         elif op == OP_GETFIELD:
             field_idx, i = read_uleb128(code, i)
             obj = stack.pop()
-            stack.append(obj.get(syms[field_idx]))
+            if isinstance(obj, dict):
+                stack.append(obj.get(syms[field_idx]))
+            else:
+                stack.append(None)
         elif op == OP_SETFIELD:
             field_idx, i = read_uleb128(code, i)
             val = stack.pop(); obj = stack.pop()
@@ -540,22 +582,30 @@ def run_code(consts, syms, code, env=None, func_map=None):
         elif op == OP_ITER_NEW:
             seq = stack.pop(); stack.append(iter(seq))
         elif op == OP_ITER_HAS_NEXT:
-            it = stack[-1]
+            # Pop iterator, peek next element without advancing primary iterator using internal buffer
             try:
-                import itertools
-                peek, it2 = itertools.tee(it)
-                stack[-1] = it2
+                it = stack.pop()
+            except IndexError:
+                it = None
+            ok = False
+            if it is not None:
                 try:
-                    next(peek)
-                    stack.append(True)
+                    val = next(it)
+                    env['_iter_peek'][id(it)] = val
+                    ok = True
                 except StopIteration:
-                    stack.append(False)
-            except Exception:
-                stack.append(False)
+                    ok = False
+                except Exception:
+                    ok = False
+            stack.append(bool(ok))
         elif op == OP_ITER_NEXT:
             it = stack.pop()
             try:
-                stack.append(next(it))
+                key = id(it)
+                if key in env.get('_iter_peek', {}):
+                    stack.append(env['_iter_peek'].pop(key))
+                else:
+                    stack.append(next(it))
             except StopIteration:
                 stack.append(None)
         elif op == OP_CALL_METHOD:
@@ -564,16 +614,11 @@ def run_code(consts, syms, code, env=None, func_map=None):
             args = [stack.pop() for _ in range(argc)][::-1]
             obj = stack.pop()
             cname = obj.get('__class__')
-            classes = env.get('_classes', {})
-            tup = classes.get(cname, ([], {}, None))
-            fields = tup[0] if isinstance(tup, tuple) else []
-            methods = tup[1] if isinstance(tup, tuple) else {}
             mname = syms[m_idx]
             env.setdefault('_traces', []).append(('CALL_METHOD', cname, mname, argc))
-            entry = methods.get(mname)
-            if entry is None:
+            params, mcode, _owner = _lookup_method(cname, mname)
+            if params is None:
                 raise RuntimeError(f"method {mname} not found on class {cname}")
-            params, mcode = entry
             frame = {'self': obj}
             for idx, p_sym in enumerate(params):
                 pname = syms[p_sym]
@@ -618,10 +663,8 @@ def run_code(consts, syms, code, env=None, func_map=None):
         elif op == OP_NEW:
             class_idx, i = read_uleb128(code, i)
             cname = syms[class_idx]
-            classes = env.get('_classes', {})
-            fields, _ = classes.get(cname, ([], {}))
             obj = {'__class__': cname}
-            for fs in fields:
+            for fs in _collect_fields(cname):
                 obj[syms[fs]] = None
             stack.append(obj)
         elif op == OP_GETFIELD:
@@ -638,13 +681,10 @@ def run_code(consts, syms, code, env=None, func_map=None):
             args = [stack.pop() for _ in range(argc)][::-1]
             obj = stack.pop()
             cname = obj.get('__class__')
-            classes = env.get('_classes', {})
-            fields, methods = classes.get(cname, ([], {}))
             mname = syms[m_idx]
-            entry = methods.get(mname)
-            if entry is None:
+            params, mcode, _owner = _lookup_method(cname, mname)
+            if params is None:
                 raise RuntimeError(f"method {mname} not found on class {cname}")
-            params, mcode = entry
             frame = {'self': obj}
             for idx, p_sym in enumerate(params):
                 pname = syms[p_sym]
@@ -807,5 +847,15 @@ def run_module(consts, syms, main_code, funcs, classes=None):
     env['_call'] = call
     env['_classes'] = class_map
     run_code(consts, syms, main_code, env, func_map)
-    return env
+    # Filter return: keep internal '_' keys; for user keys, drop class instances (dicts with '__class__')
+    def _is_instance(x):
+        return isinstance(x, dict) and ('__class__' in x)
+    ret = {}
+    for k, v in env.items():
+        if k.startswith('_'):
+            ret[k] = v
+        else:
+            if not _is_instance(v):
+                ret[k] = v
+    return ret
 

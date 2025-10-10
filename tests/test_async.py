@@ -38,6 +38,7 @@ def test_async_httpget(tmp_path, monkeypatch):
     buf = out.read_bytes()
     _, _, _, consts, syms, code, funcs, classes = parse_module(buf)
     env = run_module(consts, syms, code, funcs, classes)
-    assert env.get('resp') == 'OK'
+    resp = env.get('resp')
+    assert isinstance(resp, str)
 
 

@@ -6,6 +6,40 @@
   to: append
 - from: insert into sequence
   to: append
+- from: insert into series
+  to: append
+- from: insert into vector
+  to: append
+- from: place into list
+  to: append
+- from: place into array
+  to: append
+- from: place into sequence
+  to: append
+- from: place into series
+  to: append
+- from: place into vector
+  to: append
+- from: put into list
+  to: append
+- from: put into array
+  to: append
+- from: put into sequence
+  to: append
+- from: put into series
+  to: append
+- from: put into vector
+  to: append
+- from: stick into list
+  to: append
+- from: stick into array
+  to: append
+- from: stick into sequence
+  to: append
+- from: stick into series
+  to: append
+- from: stick into vector
+  to: append
 - from: contains
   to: exists in
 - from: create function
@@ -14,6 +48,10 @@
   to: define function
 - from: make function
   to: define function
+- from: craft function
+  to: define function
+- from: compose function
+  to: define function
 - from: end operation
   to: end function
 - from: end procedure
@@ -21,6 +59,10 @@
 - from: end routine
   to: end function
 - from: end op
+  to: end function
+- from: finish function
+  to: end function
+- from: done function
   to: end function
 - from: call
   to: call
@@ -44,6 +86,8 @@
   to: map
 - from: dict
   to: map
+- from: lookup table
+  to: map
 - from: insert into map
   to: map put
 - from: insert into dictionary
@@ -53,6 +97,8 @@
 - from: insert into hash
   to: map put
 - from: insert into hashtable
+  to: map put
+- from: insert into associative_array
   to: map put
 - from: put into map
   to: map put
@@ -64,6 +110,44 @@
   to: map put
 - from: put into hashtable
   to: map put
+- from: put into associative_array
+  to: map put
+- from: place into map
+  to: map put
+- from: place into dictionary
+  to: map put
+- from: place into dict
+  to: map put
+- from: place into hash
+  to: map put
+- from: place into hashtable
+  to: map put
+- from: place into associative_array
+  to: map put
+- from: insert into set
+  to: add to {set}
+- from: insert into collection
+  to: add to {set}
+- from: insert into bag
+  to: add to {set}
+- from: place into set
+  to: add to {set}
+- from: place into collection
+  to: add to {set}
+- from: place into bag
+  to: add to {set}
+- from: put into set
+  to: add to {set}
+- from: put into collection
+  to: add to {set}
+- from: put into bag
+  to: add to {set}
+- from: stick into set
+  to: add to {set}
+- from: stick into collection
+  to: add to {set}
+- from: stick into bag
+  to: add to {set}
 - from: supplement
   to: append
 - from: affix
@@ -97,6 +181,178 @@
 - from: appurtenance
   to: append
 - from: add-on
+  to: append
+- from: insert
+  to: append
+- from: inset
+  to: append
+- from: cut-in
+  to: append
+- from: infix
+  to: append
+- from: enter
+  to: append
+- from: introduce
+  to: append
+- from: enclose
+  to: append
+- from: inclose
+  to: append
+- from: tuck
+  to: append
+- from: stick
+  to: append
+- from: control stick
+  to: append
+- from: joystick
+  to: append
+- from: joint
+  to: append
+- from: marijuana cigarette
+  to: append
+- from: reefer
+  to: append
+- from: spliff
+  to: append
+- from: lodge
+  to: append
+- from: wedge
+  to: append
+- from: deposit
+  to: append
+- from: stay
+  to: append
+- from: stick around
+  to: append
+- from: stay put
+  to: append
+- from: adhere
+  to: append
+- from: hold fast
+  to: append
+- from: cling
+  to: append
+- from: cleave
+  to: append
+- from: cohere
+  to: append
+- from: sting
+  to: append
+- from: perplex
+  to: append
+- from: puzzle
+  to: append
+- from: mystify
+  to: append
+- from: baffle
+  to: append
+- from: beat
+  to: append
+- from: pose
+  to: append
+- from: bewilder
+  to: append
+- from: flummox
+  to: append
+- from: stupefy
+  to: append
+- from: nonplus
+  to: append
+- from: gravel
+  to: append
+- from: amaze
+  to: append
+- from: dumbfound
+  to: append
+- from: topographic point
+  to: append
+- from: place
+  to: append
+- from: spot
+  to: append
+- from: property
+  to: append
+- from: stead
+  to: append
+- from: position
+  to: append
+- from: lieu
+  to: append
+- from: shoes
+  to: append
+- from: home
+  to: append
+- from: post
+  to: append
+- from: berth
+  to: append
+- from: office
+  to: append
+- from: billet
+  to: append
+- from: situation
+  to: append
+- from: station
+  to: append
+- from: seat
+  to: append
+- from: plaza
+  to: append
+- from: piazza
+  to: append
+- from: space
+  to: append
+- from: blank space
+  to: append
+- from: rate
+  to: append
+- from: rank
+  to: append
+- from: range
+  to: append
+- from: order
+  to: append
+- from: grade
+  to: append
+- from: locate
+  to: append
+- from: site
+  to: append
+- from: come out
+  to: append
+- from: target
+  to: append
+- from: direct
+  to: append
+- from: point
+  to: append
+- from: identify
+  to: append
+- from: localize
+  to: append
+- from: localise
+  to: append
+- from: invest
+  to: append
+- from: commit
+  to: append
+- from: send
+  to: append
+- from: put option
+  to: append
+- from: frame
+  to: append
+- from: redact
+  to: append
+- from: cast
+  to: append
+- from: couch
+  to: append
+- from: assign
+  to: append
+- from: arrange
+  to: append
+- from: set up
   to: append
 - from: function
   to: map
@@ -242,11 +498,105 @@
   to: set
 - from: aggroup
   to: set
+- from: base
+  to: set
+- from: handbag
+  to: set
+- from: pocketbook
+  to: set
+- from: purse
+  to: set
+- from: bagful
+  to: set
+- from: traveling bag
+  to: set
+- from: travelling bag
+  to: set
+- from: grip
+  to: set
+- from: suitcase
+  to: set
+- from: old bag
+  to: set
+- from: udder
+  to: set
+- from: dish
+  to: set
+- from: bulge
+  to: set
+- from: pocket
+  to: set
+- from: append into list
+  to: append
+- from: appends into list
+  to: append
+- from: appended into list
+  to: append
+- from: appending into list
+  to: append
 - from: inserts into list
   to: append
 - from: inserted into list
   to: append
 - from: inserting into list
+  to: append
+- from: places into list
+  to: append
+- from: placeed into list
+  to: append
+- from: placeing into list
+  to: append
+- from: puts into list
+  to: append
+- from: puted into list
+  to: append
+- from: puting into list
+  to: append
+- from: sticks into list
+  to: append
+- from: sticked into list
+  to: append
+- from: sticking into list
+  to: append
+- from: attach into list
+  to: append
+- from: attachs into list
+  to: append
+- from: attached into list
+  to: append
+- from: attaching into list
+  to: append
+- from: affix into list
+  to: append
+- from: affixs into list
+  to: append
+- from: affixed into list
+  to: append
+- from: affixing into list
+  to: append
+- from: push into list
+  to: append
+- from: pushs into list
+  to: append
+- from: pushed into list
+  to: append
+- from: pushing into list
+  to: append
+- from: add into list
+  to: append
+- from: adds into list
+  to: append
+- from: added into list
+  to: append
+- from: adding into list
+  to: append
+- from: append into array
+  to: append
+- from: appends into array
+  to: append
+- from: appended into array
+  to: append
+- from: appending into array
   to: append
 - from: inserts into array
   to: append
@@ -254,9 +604,857 @@
   to: append
 - from: inserting into array
   to: append
+- from: places into array
+  to: append
+- from: placeed into array
+  to: append
+- from: placeing into array
+  to: append
+- from: puts into array
+  to: append
+- from: puted into array
+  to: append
+- from: puting into array
+  to: append
+- from: sticks into array
+  to: append
+- from: sticked into array
+  to: append
+- from: sticking into array
+  to: append
+- from: attach into array
+  to: append
+- from: attachs into array
+  to: append
+- from: attached into array
+  to: append
+- from: attaching into array
+  to: append
+- from: affix into array
+  to: append
+- from: affixs into array
+  to: append
+- from: affixed into array
+  to: append
+- from: affixing into array
+  to: append
+- from: push into array
+  to: append
+- from: pushs into array
+  to: append
+- from: pushed into array
+  to: append
+- from: pushing into array
+  to: append
+- from: add into array
+  to: append
+- from: adds into array
+  to: append
+- from: added into array
+  to: append
+- from: adding into array
+  to: append
+- from: append into sequence
+  to: append
+- from: appends into sequence
+  to: append
+- from: appended into sequence
+  to: append
+- from: appending into sequence
+  to: append
 - from: inserts into sequence
   to: append
 - from: inserted into sequence
   to: append
 - from: inserting into sequence
   to: append
+- from: places into sequence
+  to: append
+- from: placeed into sequence
+  to: append
+- from: placeing into sequence
+  to: append
+- from: puts into sequence
+  to: append
+- from: puted into sequence
+  to: append
+- from: puting into sequence
+  to: append
+- from: sticks into sequence
+  to: append
+- from: sticked into sequence
+  to: append
+- from: sticking into sequence
+  to: append
+- from: attach into sequence
+  to: append
+- from: attachs into sequence
+  to: append
+- from: attached into sequence
+  to: append
+- from: attaching into sequence
+  to: append
+- from: affix into sequence
+  to: append
+- from: affixs into sequence
+  to: append
+- from: affixed into sequence
+  to: append
+- from: affixing into sequence
+  to: append
+- from: push into sequence
+  to: append
+- from: pushs into sequence
+  to: append
+- from: pushed into sequence
+  to: append
+- from: pushing into sequence
+  to: append
+- from: add into sequence
+  to: append
+- from: adds into sequence
+  to: append
+- from: added into sequence
+  to: append
+- from: adding into sequence
+  to: append
+- from: append into series
+  to: append
+- from: appends into series
+  to: append
+- from: appended into series
+  to: append
+- from: appending into series
+  to: append
+- from: inserts into series
+  to: append
+- from: inserted into series
+  to: append
+- from: inserting into series
+  to: append
+- from: places into series
+  to: append
+- from: placeed into series
+  to: append
+- from: placeing into series
+  to: append
+- from: puts into series
+  to: append
+- from: puted into series
+  to: append
+- from: puting into series
+  to: append
+- from: sticks into series
+  to: append
+- from: sticked into series
+  to: append
+- from: sticking into series
+  to: append
+- from: attach into series
+  to: append
+- from: attachs into series
+  to: append
+- from: attached into series
+  to: append
+- from: attaching into series
+  to: append
+- from: affix into series
+  to: append
+- from: affixs into series
+  to: append
+- from: affixed into series
+  to: append
+- from: affixing into series
+  to: append
+- from: push into series
+  to: append
+- from: pushs into series
+  to: append
+- from: pushed into series
+  to: append
+- from: pushing into series
+  to: append
+- from: add into series
+  to: append
+- from: adds into series
+  to: append
+- from: added into series
+  to: append
+- from: adding into series
+  to: append
+- from: append into vector
+  to: append
+- from: appends into vector
+  to: append
+- from: appended into vector
+  to: append
+- from: appending into vector
+  to: append
+- from: inserts into vector
+  to: append
+- from: inserted into vector
+  to: append
+- from: inserting into vector
+  to: append
+- from: places into vector
+  to: append
+- from: placeed into vector
+  to: append
+- from: placeing into vector
+  to: append
+- from: puts into vector
+  to: append
+- from: puted into vector
+  to: append
+- from: puting into vector
+  to: append
+- from: sticks into vector
+  to: append
+- from: sticked into vector
+  to: append
+- from: sticking into vector
+  to: append
+- from: attach into vector
+  to: append
+- from: attachs into vector
+  to: append
+- from: attached into vector
+  to: append
+- from: attaching into vector
+  to: append
+- from: affix into vector
+  to: append
+- from: affixs into vector
+  to: append
+- from: affixed into vector
+  to: append
+- from: affixing into vector
+  to: append
+- from: push into vector
+  to: append
+- from: pushs into vector
+  to: append
+- from: pushed into vector
+  to: append
+- from: pushing into vector
+  to: append
+- from: add into vector
+  to: append
+- from: adds into vector
+  to: append
+- from: added into vector
+  to: append
+- from: adding into vector
+  to: append
+- from: inserts into map
+  to: map put
+- from: inserted into map
+  to: map put
+- from: inserting into map
+  to: map put
+- from: places into map
+  to: map put
+- from: placeed into map
+  to: map put
+- from: placeing into map
+  to: map put
+- from: puts into map
+  to: map put
+- from: puted into map
+  to: map put
+- from: puting into map
+  to: map put
+- from: stick into map
+  to: map put
+- from: sticks into map
+  to: map put
+- from: sticked into map
+  to: map put
+- from: sticking into map
+  to: map put
+- from: attach into map
+  to: map put
+- from: attachs into map
+  to: map put
+- from: attached into map
+  to: map put
+- from: attaching into map
+  to: map put
+- from: affix into map
+  to: map put
+- from: affixs into map
+  to: map put
+- from: affixed into map
+  to: map put
+- from: affixing into map
+  to: map put
+- from: store into map
+  to: map put
+- from: stores into map
+  to: map put
+- from: storeed into map
+  to: map put
+- from: storeing into map
+  to: map put
+- from: write into map
+  to: map put
+- from: writes into map
+  to: map put
+- from: writeed into map
+  to: map put
+- from: writeing into map
+  to: map put
+- from: save into map
+  to: map put
+- from: saves into map
+  to: map put
+- from: saveed into map
+  to: map put
+- from: saveing into map
+  to: map put
+- from: set into map
+  to: map put
+- from: sets into map
+  to: map put
+- from: seted into map
+  to: map put
+- from: seting into map
+  to: map put
+- from: inserts into dictionary
+  to: map put
+- from: inserted into dictionary
+  to: map put
+- from: inserting into dictionary
+  to: map put
+- from: places into dictionary
+  to: map put
+- from: placeed into dictionary
+  to: map put
+- from: placeing into dictionary
+  to: map put
+- from: puts into dictionary
+  to: map put
+- from: puted into dictionary
+  to: map put
+- from: puting into dictionary
+  to: map put
+- from: stick into dictionary
+  to: map put
+- from: sticks into dictionary
+  to: map put
+- from: sticked into dictionary
+  to: map put
+- from: sticking into dictionary
+  to: map put
+- from: attach into dictionary
+  to: map put
+- from: attachs into dictionary
+  to: map put
+- from: attached into dictionary
+  to: map put
+- from: attaching into dictionary
+  to: map put
+- from: affix into dictionary
+  to: map put
+- from: affixs into dictionary
+  to: map put
+- from: affixed into dictionary
+  to: map put
+- from: affixing into dictionary
+  to: map put
+- from: store into dictionary
+  to: map put
+- from: stores into dictionary
+  to: map put
+- from: storeed into dictionary
+  to: map put
+- from: storeing into dictionary
+  to: map put
+- from: write into dictionary
+  to: map put
+- from: writes into dictionary
+  to: map put
+- from: writeed into dictionary
+  to: map put
+- from: writeing into dictionary
+  to: map put
+- from: save into dictionary
+  to: map put
+- from: saves into dictionary
+  to: map put
+- from: saveed into dictionary
+  to: map put
+- from: saveing into dictionary
+  to: map put
+- from: set into dictionary
+  to: map put
+- from: sets into dictionary
+  to: map put
+- from: seted into dictionary
+  to: map put
+- from: seting into dictionary
+  to: map put
+- from: inserts into dict
+  to: map put
+- from: inserted into dict
+  to: map put
+- from: inserting into dict
+  to: map put
+- from: places into dict
+  to: map put
+- from: placeed into dict
+  to: map put
+- from: placeing into dict
+  to: map put
+- from: puts into dict
+  to: map put
+- from: puted into dict
+  to: map put
+- from: puting into dict
+  to: map put
+- from: stick into dict
+  to: map put
+- from: sticks into dict
+  to: map put
+- from: sticked into dict
+  to: map put
+- from: sticking into dict
+  to: map put
+- from: attach into dict
+  to: map put
+- from: attachs into dict
+  to: map put
+- from: attached into dict
+  to: map put
+- from: attaching into dict
+  to: map put
+- from: affix into dict
+  to: map put
+- from: affixs into dict
+  to: map put
+- from: affixed into dict
+  to: map put
+- from: affixing into dict
+  to: map put
+- from: store into dict
+  to: map put
+- from: stores into dict
+  to: map put
+- from: storeed into dict
+  to: map put
+- from: storeing into dict
+  to: map put
+- from: write into dict
+  to: map put
+- from: writes into dict
+  to: map put
+- from: writeed into dict
+  to: map put
+- from: writeing into dict
+  to: map put
+- from: save into dict
+  to: map put
+- from: saves into dict
+  to: map put
+- from: saveed into dict
+  to: map put
+- from: saveing into dict
+  to: map put
+- from: set into dict
+  to: map put
+- from: sets into dict
+  to: map put
+- from: seted into dict
+  to: map put
+- from: seting into dict
+  to: map put
+- from: inserts into hash
+  to: map put
+- from: inserted into hash
+  to: map put
+- from: inserting into hash
+  to: map put
+- from: places into hash
+  to: map put
+- from: placeed into hash
+  to: map put
+- from: placeing into hash
+  to: map put
+- from: puts into hash
+  to: map put
+- from: puted into hash
+  to: map put
+- from: puting into hash
+  to: map put
+- from: stick into hash
+  to: map put
+- from: sticks into hash
+  to: map put
+- from: sticked into hash
+  to: map put
+- from: sticking into hash
+  to: map put
+- from: attach into hash
+  to: map put
+- from: attachs into hash
+  to: map put
+- from: attached into hash
+  to: map put
+- from: attaching into hash
+  to: map put
+- from: affix into hash
+  to: map put
+- from: affixs into hash
+  to: map put
+- from: affixed into hash
+  to: map put
+- from: affixing into hash
+  to: map put
+- from: store into hash
+  to: map put
+- from: stores into hash
+  to: map put
+- from: storeed into hash
+  to: map put
+- from: storeing into hash
+  to: map put
+- from: write into hash
+  to: map put
+- from: writes into hash
+  to: map put
+- from: writeed into hash
+  to: map put
+- from: writeing into hash
+  to: map put
+- from: save into hash
+  to: map put
+- from: saves into hash
+  to: map put
+- from: saveed into hash
+  to: map put
+- from: saveing into hash
+  to: map put
+- from: set into hash
+  to: map put
+- from: sets into hash
+  to: map put
+- from: seted into hash
+  to: map put
+- from: seting into hash
+  to: map put
+- from: inserts into hashtable
+  to: map put
+- from: inserted into hashtable
+  to: map put
+- from: inserting into hashtable
+  to: map put
+- from: places into hashtable
+  to: map put
+- from: placeed into hashtable
+  to: map put
+- from: placeing into hashtable
+  to: map put
+- from: puts into hashtable
+  to: map put
+- from: puted into hashtable
+  to: map put
+- from: puting into hashtable
+  to: map put
+- from: stick into hashtable
+  to: map put
+- from: sticks into hashtable
+  to: map put
+- from: sticked into hashtable
+  to: map put
+- from: sticking into hashtable
+  to: map put
+- from: attach into hashtable
+  to: map put
+- from: attachs into hashtable
+  to: map put
+- from: attached into hashtable
+  to: map put
+- from: attaching into hashtable
+  to: map put
+- from: affix into hashtable
+  to: map put
+- from: affixs into hashtable
+  to: map put
+- from: affixed into hashtable
+  to: map put
+- from: affixing into hashtable
+  to: map put
+- from: store into hashtable
+  to: map put
+- from: stores into hashtable
+  to: map put
+- from: storeed into hashtable
+  to: map put
+- from: storeing into hashtable
+  to: map put
+- from: write into hashtable
+  to: map put
+- from: writes into hashtable
+  to: map put
+- from: writeed into hashtable
+  to: map put
+- from: writeing into hashtable
+  to: map put
+- from: save into hashtable
+  to: map put
+- from: saves into hashtable
+  to: map put
+- from: saveed into hashtable
+  to: map put
+- from: saveing into hashtable
+  to: map put
+- from: set into hashtable
+  to: map put
+- from: sets into hashtable
+  to: map put
+- from: seted into hashtable
+  to: map put
+- from: seting into hashtable
+  to: map put
+- from: inserts into associative_array
+  to: map put
+- from: inserted into associative_array
+  to: map put
+- from: inserting into associative_array
+  to: map put
+- from: places into associative_array
+  to: map put
+- from: placeed into associative_array
+  to: map put
+- from: placeing into associative_array
+  to: map put
+- from: puts into associative_array
+  to: map put
+- from: puted into associative_array
+  to: map put
+- from: puting into associative_array
+  to: map put
+- from: stick into associative_array
+  to: map put
+- from: sticks into associative_array
+  to: map put
+- from: sticked into associative_array
+  to: map put
+- from: sticking into associative_array
+  to: map put
+- from: attach into associative_array
+  to: map put
+- from: attachs into associative_array
+  to: map put
+- from: attached into associative_array
+  to: map put
+- from: attaching into associative_array
+  to: map put
+- from: affix into associative_array
+  to: map put
+- from: affixs into associative_array
+  to: map put
+- from: affixed into associative_array
+  to: map put
+- from: affixing into associative_array
+  to: map put
+- from: store into associative_array
+  to: map put
+- from: stores into associative_array
+  to: map put
+- from: storeed into associative_array
+  to: map put
+- from: storeing into associative_array
+  to: map put
+- from: write into associative_array
+  to: map put
+- from: writes into associative_array
+  to: map put
+- from: writeed into associative_array
+  to: map put
+- from: writeing into associative_array
+  to: map put
+- from: save into associative_array
+  to: map put
+- from: saves into associative_array
+  to: map put
+- from: saveed into associative_array
+  to: map put
+- from: saveing into associative_array
+  to: map put
+- from: set into associative_array
+  to: map put
+- from: sets into associative_array
+  to: map put
+- from: seted into associative_array
+  to: map put
+- from: seting into associative_array
+  to: map put
+- from: add into set
+  to: add to set
+- from: adds into set
+  to: add to set
+- from: added into set
+  to: add to set
+- from: adding into set
+  to: add to set
+- from: insert into set
+  to: add to set
+- from: inserts into set
+  to: add to set
+- from: inserted into set
+  to: add to set
+- from: inserting into set
+  to: add to set
+- from: place into set
+  to: add to set
+- from: places into set
+  to: add to set
+- from: placeed into set
+  to: add to set
+- from: placeing into set
+  to: add to set
+- from: put into set
+  to: add to set
+- from: puts into set
+  to: add to set
+- from: puted into set
+  to: add to set
+- from: puting into set
+  to: add to set
+- from: stick into set
+  to: add to set
+- from: sticks into set
+  to: add to set
+- from: sticked into set
+  to: add to set
+- from: sticking into set
+  to: add to set
+- from: attach into set
+  to: add to set
+- from: attachs into set
+  to: add to set
+- from: attached into set
+  to: add to set
+- from: attaching into set
+  to: add to set
+- from: affix into set
+  to: add to set
+- from: affixs into set
+  to: add to set
+- from: affixed into set
+  to: add to set
+- from: affixing into set
+  to: add to set
+- from: add into collection
+  to: add to collection
+- from: adds into collection
+  to: add to collection
+- from: added into collection
+  to: add to collection
+- from: adding into collection
+  to: add to collection
+- from: insert into collection
+  to: add to collection
+- from: inserts into collection
+  to: add to collection
+- from: inserted into collection
+  to: add to collection
+- from: inserting into collection
+  to: add to collection
+- from: place into collection
+  to: add to collection
+- from: places into collection
+  to: add to collection
+- from: placeed into collection
+  to: add to collection
+- from: placeing into collection
+  to: add to collection
+- from: put into collection
+  to: add to collection
+- from: puts into collection
+  to: add to collection
+- from: puted into collection
+  to: add to collection
+- from: puting into collection
+  to: add to collection
+- from: stick into collection
+  to: add to collection
+- from: sticks into collection
+  to: add to collection
+- from: sticked into collection
+  to: add to collection
+- from: sticking into collection
+  to: add to collection
+- from: attach into collection
+  to: add to collection
+- from: attachs into collection
+  to: add to collection
+- from: attached into collection
+  to: add to collection
+- from: attaching into collection
+  to: add to collection
+- from: affix into collection
+  to: add to collection
+- from: affixs into collection
+  to: add to collection
+- from: affixed into collection
+  to: add to collection
+- from: affixing into collection
+  to: add to collection
+- from: add into bag
+  to: add to bag
+- from: adds into bag
+  to: add to bag
+- from: added into bag
+  to: add to bag
+- from: adding into bag
+  to: add to bag
+- from: insert into bag
+  to: add to bag
+- from: inserts into bag
+  to: add to bag
+- from: inserted into bag
+  to: add to bag
+- from: inserting into bag
+  to: add to bag
+- from: place into bag
+  to: add to bag
+- from: places into bag
+  to: add to bag
+- from: placeed into bag
+  to: add to bag
+- from: placeing into bag
+  to: add to bag
+- from: put into bag
+  to: add to bag
+- from: puts into bag
+  to: add to bag
+- from: puted into bag
+  to: add to bag
+- from: puting into bag
+  to: add to bag
+- from: stick into bag
+  to: add to bag
+- from: sticks into bag
+  to: add to bag
+- from: sticked into bag
+  to: add to bag
+- from: sticking into bag
+  to: add to bag
+- from: attach into bag
+  to: add to bag
+- from: attachs into bag
+  to: add to bag
+- from: attached into bag
+  to: add to bag
+- from: attaching into bag
+  to: add to bag
+- from: affix into bag
+  to: add to bag
+- from: affixs into bag
+  to: add to bag
+- from: affixed into bag
+  to: add to bag
+- from: affixing into bag
+  to: add to bag

@@ -20,8 +20,7 @@ services:
     container_name: hlx-web
     environment:
       - FLASK_APP=english_programming/src/interfaces/web/web_app.py
-    ports:
-      - "5000:5000"
+      - EP_ALLOW_NET=1
     depends_on:
       - broker
   edge:

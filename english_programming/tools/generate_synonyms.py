@@ -41,51 +41,62 @@ SAFE_STOP: Set[str] = {
     'a','an','the','at','as','not','no','more','less','than'
 }
 
-LIST_WORDS = ['list','array','sequence']
-MAP_WORDS = ['map','dictionary','dict','hash','hashtable']
-SET_WORDS = ['set','collection']
+LIST_WORDS = ['list','array','sequence','series','vector']
+MAP_WORDS = ['map','dictionary','dict','hash','hashtable','hashmap','associative_array']
+SET_WORDS = ['set','collection','bag']
+VAR_WORDS = ['variable','var']
 
 # Canonical target phrases (right-hand side)
 CANON = {
     # collections
     'append': [
-        # phrase seeds mapped to 'append'
+        # phrase seeds mapped to 'append'   
         'push',
         'append to {list}',
         'push to {list}',
         'add to {list}',  # phrase-level only
         'insert into {list}',
+        'place into {list}',
+        'put into {list}',
+        'stick into {list}',
+        'attach to {list}',
+        'affix to {list}',
     ],
     'length of': [
-        'size of', 'count of', 'number of items in', 'number of elements in'
+        'size of', 'count of', 'number of items in', 'number of elements in',
+        'how many items in', 'how many elements in'
     ],
     'take the last item from list': [
         'remove last item from list',
         'take last element from list',
         'pop from list',
+        'remove last element from list',
+        'pop last element from list'
     ],
     'exists in': [
-        'contains', 'present in', 'is in'
+        'contains', 'present in', 'is in', 'found in'
     ],
     # functions
     'define function': [
-        'create function','build function','make function'
+        'create function','build function','make function', 'craft function', 'compose function'
     ],
     'end function': [
-        'end operation','end procedure','end routine','end op'
+        'end operation','end procedure','end routine','end op','finish function','done function','close function','terminate function','stop function'
     ],
     'call': [
         'call','invoke','run'
     ],
     # classes/methods
     'define class': ['create class','make class','build class'],
-    'method': ['function','routine','operation'],
+    'end class': ['finish class','done class','close class','terminate class','stop class'],
+    'method': ['function','routine','operation','member function'],
+    'end method': ['finish method','done method','close method','terminate method','stop method'],
     # comparators (keep to phrases)
     'greater than or equal to': [
-        'at least','no less than','not less than'
+        'at least','no less than','not less than','no fewer than'
     ],
     'less than or equal to': [
-        'at most','no more than','not more than','no greater than'
+        'at most','no more than','not more than','no greater than','not greater than'
     ],
 }
 
@@ -96,28 +107,61 @@ TEMPLATES: List[Tuple[str, str]] = [
     ('append to {list}', 'append'),
     ('push to {list}', 'append'),
     ('insert into {list}', 'append'),
+    ('insert onto {list}', 'append'),
+    ('place onto {list}', 'append'),
+    ('place into {list}', 'append'),
+    ('put into {list}', 'append'),
+    ('put onto {list}', 'append'),
+    ('stick into {list}', 'append'),
+    ('stick onto {list}', 'append'),
+    ('attach to {list}', 'append'),
+    ('affix to {list}', 'append'),
     ('remove last item from {list}', 'take the last item from list'),
     ('take last element from {list}', 'take the last item from list'),
+    ('remove last element from {list}', 'take the last item from list'),
+    ('pop last element from {list}', 'take the last item from list'),
     ('size of {list}', 'length of'),
     ('count of {list}', 'length of'),
     ('number of items in {list}', 'length of'),
     ('number of elements in {list}', 'length of'),
+    ('how many items in {list}', 'length of'),
+    ('how many elements in {list}', 'length of'),
     # map dictionary
     ('dictionary', 'map'),
     ('dict', 'map'),
+    ('lookup table', 'map'),
     ('insert into {map}', 'map put'),
     ('put into {map}', 'map put'),
     ('get from {map}', 'map get'),
+    ('place into {map}', 'map put'),
+    ('fetch from {map}', 'map get'),
+    ('lookup from {map}', 'map get'),
+    ('retrieve from {map}', 'map get'),
+    ('obtain from {map}', 'map get'),
+    ('read from {map}', 'map get'),
+    ('pull from {map}', 'map get'),
+    ('grab from {map}', 'map get'),
+    ('extract from {map}', 'map get'),
     # set
     ('add to {set}', 'add'),  # keep canonical 'add' for set ops (safe context)
     ('is in {set}', 'exists in'),
+    ('present in {set}', 'exists in'),
+    ('found in {set}', 'exists in'),
+    ('member of {set}', 'exists in'),
+    ('belongs to {set}', 'exists in'),
+    ('insert into {set}', 'add to {set}'),
+    ('place into {set}', 'add to {set}'),
+    ('put into {set}', 'add to {set}'),
+    ('stick into {set}', 'add to {set}'),
+    ('attach to {set}', 'add to {set}'),
+    ('affix to {set}', 'add to {set}'),
 ]
 
 # WordNet expansions where safe (single words only, with filters)
 WN_TARGETS: Dict[str, List[str]] = {
-    'append': ['append','attach','affix','add_on','supplement'],
-    'map': ['map','mapping'],
-    'set': ['set','collection','grouping'],
+    'append': ['append','attach','affix','add_on','supplement','insert','stick','place','put'],
+    'map': ['map','mapping','associative_array'],
+    'set': ['set','collection','grouping','bag'],
 }
 
 
@@ -155,6 +199,17 @@ def build_pairs(cap: int) -> List[Tuple[str, str]]:
             if len(pairs) >= cap:
                 return pairs
 
+    # Variables creation expansions
+    for vw in VAR_WORDS:
+        art = 'an' if vw[0] in 'aeiou' else 'a'
+        for prefix in ['create', 'make', 'build', 'new', 'initialize', 'init']:
+            add(f"{prefix} {art} {vw} called", 'create a variable called')
+            if len(pairs) >= cap:
+                return pairs
+            add(f"{prefix} {art} {vw} named", 'create a variable called')
+            if len(pairs) >= cap:
+                return pairs
+
     # 2) Templates expansion
     for tmpl, canon in TEMPLATES:
         if '{list}' in tmpl:
@@ -174,6 +229,36 @@ def build_pairs(cap: int) -> List[Tuple[str, str]]:
                     return pairs
         else:
             add(tmpl, canon)
+            if len(pairs) >= cap:
+                return pairs
+
+    # 2b) Creation phrase expansions (map array/sequence/etc. to canonical create-<type>-called)
+    for lw in LIST_WORDS:
+        # Determine article 'a' vs 'an'
+        art = 'an' if lw[0] in 'aeiou' else 'a'
+        for prefix in ['create', 'make', 'build', 'new']:
+            add(f"{prefix} {art} {lw} called", 'create a list called')
+            if len(pairs) >= cap:
+                return pairs
+            add(f"{prefix} {art} {lw} named", 'create a list called')
+            if len(pairs) >= cap:
+                return pairs
+    for mw in MAP_WORDS:
+        art = 'an' if mw[0] in 'aeiou' else 'a'
+        for prefix in ['create', 'make', 'build', 'new']:
+            add(f"{prefix} {art} {mw} called", 'create a map called')
+            if len(pairs) >= cap:
+                return pairs
+            add(f"{prefix} {art} {mw} named", 'create a map called')
+            if len(pairs) >= cap:
+                return pairs
+    for sw in SET_WORDS:
+        art = 'an' if sw[0] in 'aeiou' else 'a'
+        for prefix in ['create', 'make', 'build', 'new']:
+            add(f"{prefix} {art} {sw} called", 'create a set called')
+            if len(pairs) >= cap:
+                return pairs
+            add(f"{prefix} {art} {sw} named", 'create a set called')
             if len(pairs) >= cap:
                 return pairs
 
@@ -205,12 +290,46 @@ def build_pairs(cap: int) -> List[Tuple[str, str]]:
         return [base, base+'s', base+'ed', base+'ing']
 
     for lw in LIST_WORDS:
-        for v in variants('append'):
-            add(f"{v} to {lw}", 'append')
+        for verb in ['append','insert','place','put','stick','attach','affix','push','add']:
+            for v in variants(verb):
+                # phrase-level variants that imply append semantics
+                add(f"{v} to {lw}", 'append')
+                if len(pairs) >= cap:
+                    return pairs
+                add(f"{v} into {lw}", 'append')
+                if len(pairs) >= cap:
+                    return pairs
+        # length phrases
+        for phr in ['how many items in','how many elements in','number of items in','number of elements in','count of','size of']:
+            add(f"{phr} {lw}", 'length of')
             if len(pairs) >= cap:
                 return pairs
-        for v in variants('insert'):
-            add(f"{v} into {lw}", 'append')
+
+    # Map verb morphology for put/get semantics
+    for mw in MAP_WORDS:
+        for verb in ['insert','place','put','stick','attach','affix','store','write','save','set']:
+            for v in variants(verb):
+                add(f"{v} into {mw}", 'map put')
+                if len(pairs) >= cap:
+                    return pairs
+        for verb in ['get','fetch','lookup','retrieve','obtain','read','access','query','find']:
+            for v in variants(verb):
+                add(f"{v} from {mw}", 'map get')
+                if len(pairs) >= cap:
+                    return pairs
+
+    # Set verb morphology for add semantics and membership checks
+    for sw in SET_WORDS:
+        for verb in ['add','insert','place','put','stick','attach','affix']:
+            for v in variants(verb):
+                add(f"{v} into {sw}", 'add to {set}'.replace('{set}', sw))
+                if len(pairs) >= cap:
+                    return pairs
+                add(f"{v} to {sw}", 'add to {set}'.replace('{set}', sw))
+                if len(pairs) >= cap:
+                    return pairs
+        for phr in ['is in','present in','found in','member of','belongs to']:
+            add(f"{phr} {sw}", 'exists in')
             if len(pairs) >= cap:
                 return pairs
 

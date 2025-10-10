@@ -1,4 +1,4 @@
-from english_programming.bin.uleb128 import read_uleb128
+from english_programming.bin.uleb128 import read_uleb128, read_sleb128
 from typing import List
 
 OP_LOAD_CONST  = 0x01
@@ -12,6 +12,7 @@ OP_BUILD_MAP   = 0x08
 OP_GET_ATTR    = 0x09
 OP_JUMP        = 0x0A
 OP_JUMP_IF_FALSE=0x0B
+OP_JUMP_BACK    = 0xAD
 OP_CALL        = 0x0C
 OP_RETURN      = 0x0D
 OP_LT          = 0x0E
@@ -140,6 +141,11 @@ def verify_code(consts, syms, code):
             tgt = i + off
             if not (0 <= tgt <= n):
                 raise ValueError("JUMP_IF_FALSE target out of code bounds")
+        elif op == OP_JUMP_BACK:
+            off, i = read_sleb128(code, i)
+            tgt = i + off
+            if not (0 <= tgt <= n):
+                raise ValueError("JUMP_BACK target out of code bounds")
         elif op == OP_CALL:
             fidx, i = read_uleb128(code, i)
             argc, i = read_uleb128(code, i)
@@ -219,11 +225,14 @@ def verify_code(consts, syms, code):
             fidx, i = read_uleb128(code, i); argc, i = read_uleb128(code, i)
             for _ in range(argc): need(1); stack.pop()
         elif op == OP_ITER_NEW:
-            need(1); stack.pop(); stack.append('iter')
+            # pop seq, push iterator -> net 0
+            need(1); stack += 0
         elif op == OP_ITER_HAS_NEXT:
-            need(1); stack.pop(); stack.append('bool')
+            # does not pop iterator; pushes bool -> net +1
+            need(1); stack += 1
         elif op == OP_ITER_NEXT:
-            need(1); stack.pop(); stack.append('unknown')
+            # pop iterator, push item -> net 0
+            need(1); stack += 0
         elif op in (OP_STRUPPER, OP_STRLOWER, OP_STRTRIM):
             need(1); # pop then push
         elif op == OP_LIST_APPEND:
@@ -355,12 +364,14 @@ def verify_code_types(consts, syms, code):
             need(1); stack.pop(); stack.append('unknown')
         elif op == OP_PRINT:
             need(1); stack.pop()
-        elif op in (OP_JUMP, OP_JUMP_IF_FALSE, OP_RETURN, OP_SETUP_CATCH, OP_END_TRY, OP_THROW, OP_NEW, OP_GETFIELD, OP_SETFIELD, OP_CALL, OP_CALL_METHOD, OP_ANNOTATE_FUNC, OP_ITER_NEW, OP_ITER_HAS_NEXT, OP_ITER_NEXT):
+        elif op in (OP_JUMP, OP_JUMP_IF_FALSE, OP_JUMP_BACK, OP_RETURN, OP_SETUP_CATCH, OP_END_TRY, OP_THROW, OP_NEW, OP_GETFIELD, OP_SETFIELD, OP_CALL, OP_CALL_METHOD, OP_ANNOTATE_FUNC, OP_ITER_NEW, OP_ITER_HAS_NEXT, OP_ITER_NEXT):
             # skip for type purposes for these ops; handle arg pops if needed
             if op == OP_JUMP:
                 off, i = read_uleb128(code, i)
             elif op == OP_JUMP_IF_FALSE:
                 off, i = read_uleb128(code, i); need(1); stack.pop()
+            elif op == OP_JUMP_BACK:
+                off, i = read_sleb128(code, i)
             elif op == OP_RETURN:
                 if stack: stack.pop()
             elif op in (OP_CALL,):
@@ -389,8 +400,10 @@ def verify_code_types(consts, syms, code):
             elif op == OP_ITER_NEW:
                 need(1); stack.pop(); stack.append('iter')
             elif op == OP_ITER_HAS_NEXT:
-                need(1); stack.pop(); stack.append('bool')
+                # do not pop iterator; pushes a bool
+                need(1); stack.append('bool')
             elif op == OP_ITER_NEXT:
+                # pop iterator, push item
                 need(1); stack.pop(); stack.append('unknown')
         elif op == OP_LIST_APPEND:
             need(2); stack.pop(); stack.pop(); stack.append('list')

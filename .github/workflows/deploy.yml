@@ -13,6 +13,13 @@ jobs:
   deploy-backend-eb:
     name: Deploy Backend to Elastic Beanstalk
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || vars.AWS_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION || vars.AWS_REGION }}
+      EB_S3_BUCKET: ${{ secrets.EB_S3_BUCKET || vars.EB_S3_BUCKET }}
+      EB_APP_NAME: ${{ secrets.EB_APP_NAME || vars.EB_APP_NAME }}
+      EB_ENV_NAME: ${{ secrets.EB_ENV_NAME || vars.EB_ENV_NAME }}
+      API_URL: ${{ secrets.API_URL || vars.API_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +31,8 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Create source bundle
         run: |
@@ -35,20 +42,27 @@ jobs:
         run: |
           VERSION="build-$(date +%Y%m%d-%H%M%S)"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/$VERSION.zip
+          aws s3 cp app.zip s3://${{ env.EB_S3_BUCKET }}/$VERSION.zip
 
       - name: Create EB application version
         run: |
           aws elasticbeanstalk create-application-version \
-            --application-name ${{ secrets.EB_APP_NAME }} \
+            --application-name ${{ env.EB_APP_NAME }} \
             --version-label $VERSION \
-            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=$VERSION.zip
+            --source-bundle S3Bucket=${{ env.EB_S3_BUCKET }},S3Key=$VERSION.zip
 
       - name: Update EB environment
         run: |
           aws elasticbeanstalk update-environment \
-            --environment-name ${{ secrets.EB_ENV_NAME }} \
+            --environment-name ${{ env.EB_ENV_NAME }} \
             --version-label $VERSION
+
+      - name: Check API health
+        env:
+          API_URL: ${{ env.API_URL }}
+        run: |
+          echo "Checking ${API_URL}/health"
+          curl -fsS -o /dev/null -w "%{http_code}\n" "${API_URL}/health"
 
   deploy-frontend-s3-cf:
     name: Deploy Frontend to S3 + CloudFront
@@ -56,6 +70,12 @@ jobs:
     defaults:
       run:
         working-directory: ui/english-ui
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || vars.AWS_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION || vars.AWS_REGION }}
+      S3_BUCKET_FRONTEND: ${{ secrets.S3_BUCKET_FRONTEND || vars.S3_BUCKET_FRONTEND }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID || vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      API_URL: ${{ secrets.API_URL || vars.API_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +87,7 @@ jobs:
 
       - name: Build with API URL
         env:
-          VITE_API_URL: ${{ secrets.API_URL }}
+          VITE_API_URL: ${{ env.API_URL }}
         run: |
           npm ci || npm i
           npm run build
@@ -75,16 +95,16 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Sync to S3
         run: |
-          aws s3 sync dist s3://${{ secrets.S3_BUCKET_FRONTEND }} \
+          aws s3 sync dist s3://${{ env.S3_BUCKET_FRONTEND }} \
             --delete --cache-control max-age=31536000,public
 
       - name: Create CloudFront invalidation
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/index.html" "/assets/*"

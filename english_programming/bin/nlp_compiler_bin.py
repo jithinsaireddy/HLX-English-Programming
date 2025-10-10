@@ -83,6 +83,8 @@ def _builtin_phrase_replacements():
         (r"\bcount of\b", "length of"),
         (r"\bnumber of items in\b", "length of"),
         (r"\bnumber of elements in\b", "length of"),
+        # Collapse type qualifiers after 'length of'
+        (r"\blength of\s+(?:list|array|sequence|series|vector)\s+(\w+)\b", r"length of \1"),
         (r"\bdictionary\b", "map"),
         (r"\bdict\b", "map"),
         (r"\bpush\b", "append"),
@@ -93,6 +95,10 @@ def _builtin_phrase_replacements():
         (r"\binsert\s+(.+?)\s+into\s+(?:list|array|sequence)\s+(\w+)\b", r"append \1 to list \2"),
         # Reorder: insert X into Y -> append X to Y (generic; list word may be omitted)
         (r"\binsert\s+(.+?)\s+into\s+(\w+)\b", r"append \1 to \2"),
+        # Reorder: place/put/stick/attach/affix X into (list|array|sequence|series|vector) Y
+        (r"\b(?:place|put|stick|attach|affix)\s+(.+?)\s+(?:into|to)\s+(?:list|array|sequence|series|vector)\s+(\w+)\b", r"append \1 to list \2"),
+        # Reorder: place/put/stick/attach/affix X into Y -> append X to Y (generic)
+        (r"\b(?:place|put|stick|attach|affix)\s+(.+?)\s+(?:into|to)\s+(\w+)\b", r"append \1 to \2"),
         # Functions
         (r"\bcreate function\b", "define function"),
         (r"\bbuild function\b", "define function"),
