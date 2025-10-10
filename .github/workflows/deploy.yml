@@ -36,7 +36,8 @@ jobs:
 
       - name: Create source bundle
         run: |
-          git archive -o app.zip HEAD
+          rm -f app.zip
+          zip -r app.zip Dockerfile requirements.txt wsgi.py english_programming .ebextensions
 
       - name: Upload app bundle to S3 (EB app versions bucket)
         run: |
@@ -57,12 +58,19 @@ jobs:
             --environment-name ${{ env.EB_ENV_NAME }} \
             --version-label $VERSION
 
-      - name: Check API health
+      - name: Check API health (with retries)
         env:
           API_URL: ${{ env.API_URL }}
         run: |
-          echo "Checking ${API_URL}/health"
-          curl -fsS -o /dev/null -w "%{http_code}\n" "${API_URL}/health"
+          echo "Checking ${API_URL}/health with retries..."
+          for i in {1..30}; do
+            code=$(curl -fsS -o /dev/null -w "%{http_code}" "${API_URL}/health" || true)
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "Health check failed after retries"
+          exit 1
 
   deploy-frontend-s3-cf:
     name: Deploy Frontend to S3 + CloudFront
