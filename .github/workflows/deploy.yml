@@ -77,7 +77,7 @@ jobs:
                 - FLASK_APP=english_programming/src/interfaces/web/web_app.py
                 - EP_ALLOW_NET=1
               ports:
-                - "5000:5000"
+                - "127.0.0.1:5000:5000"
           EOF
           # Include EB config
           cp -r .ebextensions eb_bundle/
