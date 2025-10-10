@@ -21,6 +21,8 @@ services:
     environment:
       - FLASK_APP=english_programming/src/interfaces/web/web_app.py
       - EP_ALLOW_NET=1
+    ports:
+      - "5000:5000"
     depends_on:
       - broker
   edge:
