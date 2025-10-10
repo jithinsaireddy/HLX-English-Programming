@@ -34,10 +34,10 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create source bundle
+      - name: Create source bundle (include compose + docker dir)
         run: |
           rm -f app.zip
-          zip -r app.zip Dockerfile requirements.txt wsgi.py english_programming .ebextensions
+          git archive -o app.zip HEAD
 
       - name: Upload app bundle to S3 (EB app versions bucket)
         run: |
@@ -58,19 +58,37 @@ jobs:
             --environment-name ${{ env.EB_ENV_NAME }} \
             --version-label $VERSION
 
-      - name: Check API health (with retries)
-        env:
-          API_URL: ${{ env.API_URL }}
+      - name: Resolve EB CNAME
+        id: resolve_cname
         run: |
-          echo "Checking ${API_URL}/health with retries..."
+          CNAME=$(aws elasticbeanstalk describe-environments \
+            --environment-names "${{ env.EB_ENV_NAME }}" \
+            --query 'Environments[0].CNAME' --output text)
+          echo "EB_CNAME=$CNAME" >> $GITHUB_ENV
+          echo "Resolved EB CNAME: $CNAME"
+
+      - name: Check EB CNAME health (with retries)
+        env:
+          EB_CNAME: ${{ env.EB_CNAME }}
+        run: |
+          echo "Checking http://${EB_CNAME}/health with retries..."
           for i in {1..30}; do
-            code=$(curl -fsS -o /dev/null -w "%{http_code}" "${API_URL}/health" || true)
+            code=$(curl -fsS -o /dev/null -w "%{http_code}" "http://${EB_CNAME}/health" || true)
             echo "Attempt $i: HTTP $code"
             if [ "$code" = "200" ]; then exit 0; fi
             sleep 10
           done
-          echo "Health check failed after retries"
+          echo "EB CNAME health check failed after retries"
           exit 1
+
+      - name: Check custom domain health (non-blocking)
+        if: env.API_URL != ''
+        env:
+          API_URL: ${{ env.API_URL }}
+        continue-on-error: true
+        run: |
+          echo "Checking custom domain ${API_URL}/health (non-blocking) ..."
+          curl -fsS -o /dev/null -w "%{http_code}\n" "${API_URL}/health"
 
   deploy-frontend-s3-cf:
     name: Deploy Frontend to S3 + CloudFront

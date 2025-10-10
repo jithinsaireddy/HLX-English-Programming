@@ -1,50 +1,15 @@
 services:
-  dev:
-    container_name: hlx-dev
-    build:
-      context: .
-      dockerfile: docker/web.Dockerfile
-    environment:
-      - FLASK_APP=english_programming/src/interfaces/web/web_app.py
-    ports:
-      - "5050:5000"
-  broker:
-    image: eclipse-mosquitto:2
-    container_name: hlx-mosquitto
-    ports:
-      - "1883:1883"
   web:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
     container_name: hlx-web
+    restart: always
     environment:
       - FLASK_APP=english_programming/src/interfaces/web/web_app.py
       - EP_ALLOW_NET=1
     ports:
       - "5000:5000"
-    depends_on:
-      - broker
-  edge:
-    build:
-      context: .
-      dockerfile: docker/edge.Dockerfile
-    container_name: hlx-edge
-    environment:
-      - HLX_SPEC=${HLX_SPEC:-english_programming/examples/boiler_a.hlx}
-      - HLX_ENDPOINT=${HLX_ENDPOINT:-mqtt://broker}
-    depends_on:
-      - broker
-    command: ["python", "-m", "english_programming.hlx.edge_module", "--spec", "${HLX_SPEC}", "--endpoint", "${HLX_ENDPOINT}"]
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
-    container_name: hlx-frontend
-    ports:
-      - "5173:80"
-    depends_on:
-      - web
 networks:
   default:
     name: hlx-net
