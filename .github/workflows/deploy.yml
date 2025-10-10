@@ -20,6 +20,7 @@ jobs:
       EB_APP_NAME: ${{ secrets.EB_APP_NAME || vars.EB_APP_NAME }}
       EB_ENV_NAME: ${{ secrets.EB_ENV_NAME || vars.EB_ENV_NAME }}
       API_URL: ${{ secrets.API_URL || vars.API_URL }}
+      ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY || vars.ECR_REPOSITORY || 'english-programming-backend' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,15 +35,56 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create source bundle (include compose + docker dir)
-        run: |
-          rm -f app.zip
-          git archive -o app.zip HEAD
-
-      - name: Upload app bundle to S3 (EB app versions bucket)
+      - name: Set VERSION
         run: |
           VERSION="build-$(date +%Y%m%d-%H%M%S)"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Get AWS Account ID and set ECR registry
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
+          echo "ECR_REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" >/dev/null
+
+      - name: Build and push backend image to ECR
+        run: |
+          IMAGE_TAG="$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION"
+          docker build -f docker/web.Dockerfile -t "$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Create EB source bundle (minimal compose referencing ECR image)
+        run: |
+          rm -rf eb_bundle app.zip
+          mkdir -p eb_bundle
+          # Minimal docker-compose.yml for EB to pull the prebuilt image
+          cat > eb_bundle/docker-compose.yml <<EOF
+          services:
+            web:
+              image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${VERSION}
+              container_name: hlx-web
+              restart: always
+              environment:
+                - FLASK_APP=english_programming/src/interfaces/web/web_app.py
+                - EP_ALLOW_NET=1
+              ports:
+                - "5000:5000"
+          EOF
+          # Include EB config
+          cp -r .ebextensions eb_bundle/
+          (cd eb_bundle && zip -r ../app.zip .)
+
+      - name: Upload app bundle to S3 (EB app versions bucket)
+        run: |
           aws s3 cp app.zip s3://${{ env.EB_S3_BUCKET }}/$VERSION.zip
 
       - name: Create EB application version
