@@ -135,6 +135,14 @@ function EPL() {
   const [shareUrl, setShareUrl] = useState('')
   const snippets = [
     {name:'Sum & Print', text: sample},
+    {name:'Sequence – Evens Sum (1..10)', text:`create a list of numbers from 1 to 10, then filter for even numbers and calculate their sum.
+print sum`},
+    {name:'Sequence – Divisible by 3 (1..20)', text:`sum numbers from 1 to 20 where i is divisible by 3 into sum
+print sum`},
+    {name:'Sequence – Primes Sum (2..30)', text:`sum numbers from 2 to 30 where i is prime into sum
+print sum`},
+    {name:'Sequence – Odds Sum (1..8)', text:`sum numbers from 1 to 8 where i is odd into sum
+print sum`},
     {name:'Loops – Repeat N times', text:`set sum to 0
 repeat 5 times:
   add sum and 1 and store the result in sum
