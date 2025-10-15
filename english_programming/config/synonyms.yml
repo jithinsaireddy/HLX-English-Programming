@@ -10,3 +10,39 @@
   to: "exists in"
 - from: "remove last item from list"
   to: "take the last item from list"
+
+# Arithmetic and predicates
+- from: modulo
+  to: mod
+- from: remainder
+  to: mod
+- from: divides evenly by
+  to: divisible by
+- from: is multiple of
+  to: divisible by
+- from: multiple of
+  to: divisible by
+- from: even number
+  to: is even
+- from: odd number
+  to: is odd
+- from: is a prime number
+  to: is prime
+- from: is prime number
+  to: is prime
+
+# Range and lists
+- from: build list
+  to: create list
+- from: make list
+  to: create list
+- from: down to
+  to: down to
+
+# Filter and sum
+- from: select
+  to: filter
+- from: total
+  to: sum
+- from: add up
+  to: sum

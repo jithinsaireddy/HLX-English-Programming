@@ -11,6 +11,7 @@ OP_SUB         = 0x0F
 OP_MUL         = 0x10
 OP_DIV         = 0x11
 OP_CONCAT      = 0x12
+OP_MOD         = 0x17
 
 
 def _fold_binary(op, a, b):
@@ -25,6 +26,8 @@ def _fold_binary(op, a, b):
             return a / b
         if op == OP_CONCAT:
             return str(a) + str(b)
+        if op == OP_MOD:
+            return a % b
     except Exception:
         return None
     return None
@@ -44,7 +47,7 @@ def optimize_code(consts, code_bytes):
             if pos_after_i1 < n and code_bytes[pos_after_i1] == OP_LOAD_CONST:
                 j = pos_after_i1 + 1
                 i2, j = read_uleb128(code_bytes, j)
-                if j < n and code_bytes[j] in (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_CONCAT):
+                if j < n and code_bytes[j] in (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_CONCAT, OP_MOD):
                     binop = code_bytes[j]
                     a = consts[i1]; b = consts[i2]
                     res = _fold_binary(binop, a, b)

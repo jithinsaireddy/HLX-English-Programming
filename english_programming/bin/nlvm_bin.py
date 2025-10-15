@@ -32,6 +32,7 @@ OP_LEN         = 0x13
 OP_EQ          = 0x14
 OP_LE          = 0x15
 OP_GE          = 0x16
+OP_MOD         = 0x17
 
 OP_WRITEFILE   = 0x20
 OP_READFILE    = 0x21
@@ -249,6 +250,8 @@ def run_code(consts, syms, code, env=None, func_map=None):
             b = stack.pop(); a = stack.pop(); stack.append(a * b)
         elif op == OP_DIV:
             b = stack.pop(); a = stack.pop(); stack.append(a / b)
+        elif op == OP_MOD:
+            b = stack.pop(); a = stack.pop(); stack.append(a % b)
         elif op == OP_CONCAT:
             b = stack.pop(); a = stack.pop(); stack.append(str(a) + str(b))
         elif op == OP_LEN:
@@ -315,15 +318,52 @@ def run_code(consts, syms, code, env=None, func_map=None):
             if jit:
                 cnt = jit.maybe_count_backedge(prev, i)
                 if cnt and jit.is_hot((i, prev)):
-                    try:
-                        comp = jit.compiled_loops.get((i, prev)) or jit.compile_loop(code, i, prev)
-                        comp(env, consts, syms)
-                    except Exception:
-                        # Fallback to interpreter on JIT failure
-                        pass
-                    finally:
-                        # continue from after loop end
-                        i = prev
+                    # Only JIT very simple counter loops (no complex boolean chains inside body)
+                    def _loop_is_simple(start_ip: int, end_ip: int) -> bool:
+                        k = start_ip
+                        extra_if = 0
+                        has_eq = False
+                        has_mod = False
+                        # Skip the initial condition sequence: LOAD_NAME, LOAD_CONST/NAME, LE/GE, JUMP_IF_FALSE
+                        # We conservatively scan entire body and require no EQ/MOD and at most one JUMP_IF_FALSE
+                        while k < end_ip:
+                            opk = code[k]; k += 1
+                            if opk == OP_JUMP_IF_FALSE:
+                                off2, k = read_uleb128(code, k)
+                                extra_if += 1
+                            elif opk == OP_EQ:
+                                has_eq = True
+                            elif opk == OP_MOD:
+                                has_mod = True
+                            elif opk in (OP_LOAD_CONST, OP_LOAD_NAME, OP_STORE_NAME, OP_ADD, OP_SUB, OP_MUL, OP_LE, OP_GE, OP_LT, OP_LIST_APPEND, OP_GET_ATTR, OP_BUILD_LIST, OP_LEN, OP_CONCAT):
+                                # benign
+                                # advance operands for ops we consumed above
+                                if opk in (OP_LOAD_CONST, OP_LOAD_NAME, OP_STORE_NAME, OP_GET_ATTR):
+                                    _, k = read_uleb128(code, k)
+                                elif opk in (OP_BUILD_LIST,):
+                                    _, k = read_uleb128(code, k)
+                                else:
+                                    pass
+                            elif opk == OP_JUMP:
+                                off_b, k = read_uleb128(code, k)
+                                # don't follow
+                            elif opk == OP_JUMP_BACK:
+                                from english_programming.bin.uleb128 import read_sleb128 as _read_sleb
+                                _, k = _read_sleb(code, k)
+                            else:
+                                # unknown/complex op – bail out
+                                return False
+                        return (extra_if <= 1) and (not has_eq) and (not has_mod)
+                    if _loop_is_simple(i, prev):
+                        try:
+                            comp = jit.compiled_loops.get((i, prev)) or jit.compile_loop(code, i, prev)
+                            comp(env, consts, syms)
+                        except Exception:
+                            # Fallback to interpreter on JIT failure
+                            pass
+                        finally:
+                            # continue from after loop end
+                            i = prev
         elif op == OP_JUMP_IF_FALSE:
             off, i = read_uleb128(code, i)
             cond = stack.pop()
@@ -337,13 +377,43 @@ def run_code(consts, syms, code, env=None, func_map=None):
             if jit:
                 cnt = jit.maybe_count_backedge(prev, i)
                 if cnt and jit.is_hot((i, prev)):
-                    try:
-                        comp = jit.compiled_loops.get((i, prev)) or jit.compile_loop(code, i, prev)
-                        comp(env, consts, syms)
-                    except Exception:
-                        pass
-                    finally:
-                        i = prev
+                    def _loop_is_simple(start_ip: int, end_ip: int) -> bool:
+                        k = start_ip
+                        extra_if = 0
+                        has_eq = False
+                        has_mod = False
+                        while k < end_ip:
+                            opk = code[k]; k += 1
+                            if opk == OP_JUMP_IF_FALSE:
+                                off2, k = read_uleb128(code, k)
+                                extra_if += 1
+                            elif opk == OP_EQ:
+                                has_eq = True
+                            elif opk == OP_MOD:
+                                has_mod = True
+                            elif opk in (OP_LOAD_CONST, OP_LOAD_NAME, OP_STORE_NAME, OP_ADD, OP_SUB, OP_MUL, OP_LE, OP_GE, OP_LT, OP_LIST_APPEND, OP_GET_ATTR, OP_BUILD_LIST, OP_LEN, OP_CONCAT):
+                                if opk in (OP_LOAD_CONST, OP_LOAD_NAME, OP_STORE_NAME, OP_GET_ATTR):
+                                    _, k = read_uleb128(code, k)
+                                elif opk in (OP_BUILD_LIST,):
+                                    _, k = read_uleb128(code, k)
+                                else:
+                                    pass
+                            elif opk == OP_JUMP:
+                                off_b, k = read_uleb128(code, k)
+                            elif opk == OP_JUMP_BACK:
+                                from english_programming.bin.uleb128 import read_sleb128 as _read_sleb
+                                _, k = _read_sleb(code, k)
+                            else:
+                                return False
+                        return (extra_if <= 1) and (not has_eq) and (not has_mod)
+                    if _loop_is_simple(i, prev):
+                        try:
+                            comp = jit.compiled_loops.get((i, prev)) or jit.compile_loop(code, i, prev)
+                            comp(env, consts, syms)
+                        except Exception:
+                            pass
+                        finally:
+                            i = prev
         elif op == OP_LT:
             b = stack.pop(); a = stack.pop(); stack.append(a < b)
         elif op == OP_CALL:
@@ -705,8 +775,10 @@ def run_module(consts, syms, main_code, funcs, classes=None):
     except Exception as e:
         raise
     try:
-        from english_programming.bin.nlbc_opt import optimize_module
-        consts, syms, main_code, funcs = optimize_module(consts, syms, main_code, funcs)
+        import os as _os
+        if _os.getenv('EP_OPT', '0') == '1':
+            from english_programming.bin.nlbc_opt import optimize_module
+            consts, syms, main_code, funcs = optimize_module(consts, syms, main_code, funcs)
         # SSA hooks: build a lightweight instruction view and run CSE/LICM/inliner
         try:
             from english_programming.src.compiler.ssa_ir import ssa_from_bytecode, ssa_cse, ssa_licm, ssa_inline_noop

@@ -24,6 +24,7 @@ OP_LEN         = 0x13
 OP_EQ          = 0x14
 OP_LE          = 0x15
 OP_GE          = 0x16
+OP_MOD         = 0x17
 
 OP_WRITEFILE   = 0x20
 OP_READFILE    = 0x21
@@ -102,6 +103,8 @@ def verify_code(consts, syms, code):
         elif op == OP_MUL:
             need(2); stack -= 1
         elif op == OP_DIV:
+            need(2); stack -= 1
+        elif op == OP_MOD:
             need(2); stack -= 1
         elif op == OP_CONCAT:
             need(2); stack -= 1
@@ -286,13 +289,17 @@ def verify_code_types(consts, syms, code):
         elif op == OP_STORE_NAME:
             sidx, i = read_uleb128(code, i)
             need(1); t = stack.pop(); sym_types[syms[sidx]] = t
-        elif op in (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_LT, OP_LE, OP_GE, OP_EQ):
+        elif op in (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD, OP_LT, OP_LE, OP_GE, OP_EQ):
             need(2); b = stack.pop(); a = stack.pop()
             # Allow unknowns; else require numeric for arithmetic, comparable for comparisons
-            if op in (OP_ADD, OP_SUB, OP_MUL, OP_DIV):
+            if op in (OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD):
                 if a != 'unknown' and b != 'unknown' and not (a in ('int','float') and b in ('int','float')):
                     raise ValueError("Type error: arithmetic on non-numbers")
-                stack.append('float' if 'float' in (a,b) else 'int')
+                # MOD always returns int if both are ints; if float involved, leave as int for our VM semantics
+                if op == OP_MOD:
+                    stack.append('int')
+                else:
+                    stack.append('float' if 'float' in (a,b) else 'int')
             else:
                 stack.append('bool')
         elif op == OP_CONCAT:

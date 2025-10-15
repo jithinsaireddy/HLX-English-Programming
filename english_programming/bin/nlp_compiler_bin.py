@@ -25,11 +25,29 @@ def _load_spacy():
     return _NLP
 
 def _normalize_text_with_spacy(s: str) -> str:
+    # Mandatory spaCy normalization for all lines
     nlp = _load_spacy()
     if not nlp:
         raise RuntimeError('spaCy not loaded')
-    doc = nlp(s)
+    # Preserve quoted strings by temporary placeholders
+    placeholders = {}
+    def _stash_quotes(text: str) -> str:
+        import re as _re
+        idx = 0
+        def repl(m):
+            nonlocal idx
+            key = f"__Q{idx}__"; idx += 1
+            placeholders[key] = m.group(0)
+            return key
+        return _re.sub(r"(\"[^\"]*\"|'[^']*')", repl, text)
+    def _unstash(text: str) -> str:
+        for k, v in placeholders.items():
+            text = text.replace(k, v)
+        return text
+    s2 = _stash_quotes(s)
+    doc = nlp(s2)
     lemmas = ' '.join(t.lemma_.lower() or t.text.lower() for t in doc)
+    lemmas = _unstash(lemmas)
     if logging.getLogger('epl_bin').isEnabledFor(logging.DEBUG):
         logging.getLogger('epl_bin').debug(f"normalize: src='{s}' -> '{lemmas}'")
     return lemmas
@@ -298,6 +316,15 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             if m: return ('LT', m.group(1), m.group(2))
             m = re.match(r"^(\w+)\s+(?:is|be) equal to\s+(\w+|\-?\d+)$", norm)
             if m: return ('EQ', m.group(1), m.group(2))
+            # predicates: even/odd/divisible/prime
+            m = re.match(r"^(\w+)\s+(?:is|be)?\s*even$", norm)
+            if m: return ('EVEN', m.group(1), None)
+            m = re.match(r"^(\w+)\s+(?:is|be)?\s*odd$", norm)
+            if m: return ('ODD', m.group(1), None)
+            m = re.match(r"^(\w+)\s+(?:is|be)?\s*(?:divisible\s+by|multiple\s+of)\s+(\w+|\-?\d+)$", norm)
+            if m: return ('DIVBY', m.group(1), m.group(2))
+            m = re.match(r"^(\w+)\s+(?:is|be)?\s*prime$", norm)
+            if m: return ('PRIME', m.group(1), None)
             m = re.match(r"^(\w+)\s*(>=|>|<=|<|==)\s*(\w+|\-?\d+)$", norm)
             if m:
                 opmap = {'>':'GT','>=':'GE','<':'LT','<=':'LE','==':'EQ'}
@@ -328,33 +355,87 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             return [('LOAD_NAME', sym_idx(var))] + load_rhs(rhs) + [('LE',)]
         if op == 'EQ':
             return [('LOAD_NAME', sym_idx(var))] + load_rhs(rhs) + [('EQ',)]
+        if op == 'EVEN':
+            return [('LOAD_NAME', sym_idx(var)), ('LOAD_CONST', const_idx(CT_INT, 2)), ('MOD',), ('LOAD_CONST', const_idx(CT_INT, 0)), ('EQ',)]
+        if op == 'ODD':
+            return [('LOAD_NAME', sym_idx(var)), ('LOAD_CONST', const_idx(CT_INT, 2)), ('MOD',), ('LOAD_CONST', const_idx(CT_INT, 1)), ('EQ',)]
+        if op == 'DIVBY':
+            return [('LOAD_NAME', sym_idx(var))] + load_rhs(rhs) + [('MOD',), ('LOAD_CONST', const_idx(CT_INT, 0)), ('EQ',)]
+        if op == 'PRIME':
+            # Inline trial division: returns bool on stack
+            # n = var; if n < 2 -> False
+            n_sym = sym_idx(f"__n_{var}")
+            d_sym = sym_idx(f"__d_{var}")
+            LFalse = _new_label('PR_FALSE')
+            LTrue = _new_label('PR_TRUE')
+            LLoop = _new_label('PR_LOOP')
+            LEnd  = _new_label('PR_END')
+            out = []
+            out += [('LOAD_NAME', sym_idx(var)), ('STORE_NAME', n_sym)]
+            out += [('LOAD_NAME', n_sym), ('LOAD_CONST', const_idx(CT_INT, 2)), ('LT',), ('JUMP_IF_FALSE', LLoop)]
+            out += [('LABEL', LFalse), ('LOAD_CONST', const_idx(CT_INT, 0)), ('JUMP', LEnd)]
+            # d = 2
+            out += [('LABEL', LLoop), ('LOAD_CONST', const_idx(CT_INT, 2)), ('STORE_NAME', d_sym)]
+            # while d*d <= n
+            LCheck = _new_label('PR_CHECK')
+            LNext  = _new_label('PR_NEXT')
+            out += [('LABEL', LCheck), ('LOAD_NAME', d_sym), ('LOAD_NAME', d_sym), ('MUL',), ('LOAD_NAME', n_sym), ('LE',), ('JUMP_IF_FALSE', LTrue)]
+            # if n % d == 0 -> False
+            out += [('LOAD_NAME', n_sym), ('LOAD_NAME', d_sym), ('MOD',), ('LOAD_CONST', const_idx(CT_INT, 0)), ('EQ',), ('JUMP_IF_FALSE', LNext)]
+            out += [('JUMP', LFalse)]
+            # d = d + 1; loop
+            out += [('LABEL', LNext), ('LOAD_NAME', d_sym), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', d_sym), ('JUMP', LCheck)]
+            # True
+            out += [('LABEL', LTrue), ('LOAD_CONST', const_idx(CT_INT, 1))]
+            out += [('LABEL', LEnd)]
+            return out
         return []
 
     def compile_condition_expr(cond_str: str):
+        # Try simple atomic predicate first using raw text to avoid pronoun lemma issues
+        try:
+            _op0, _var0, _rhs0 = parse_condition(cond_str)
+            return compile_condition(_op0, _var0, _rhs0)
+        except Exception:
+            pass
         # Recursive descent with parentheses and and/or
         norm = _canonicalize_synonyms(_normalize_text_with_spacy(cond_str)).strip().rstrip(':').rstrip('.')
         tokens = re.findall(r"\(|\)|>=|<=|==|>|<|\w+|\d+", norm)
 
-        def parse_expr(i=0):  # OR-precedence
-            i, ops = parse_term(i)
+        def parse_expr(i=0):  # OR-precedence with single common end label
+            term_ops = []
+            i, first = parse_term(i)
+            term_ops.append(first)
             while i < len(tokens) and tokens[i] == 'or':
                 i += 1
-                true_label = _new_label('ORTRUE')
-                end_label = _new_label('OREND')
-                ops += [('JUMP_IF_FALSE', true_label), ('LOAD_CONST', const_idx(CT_INT, 1)), ('JUMP', end_label), ('LABEL', true_label)]
-                i, right = parse_term(i)
-                ops += right + [('LABEL', end_label)]
+                i, nxt = parse_term(i)
+                term_ops.append(nxt)
+            if len(term_ops) == 1:
+                return i, term_ops[0]
+            end_label = _new_label('OREND')
+            ops = []
+            for t in term_ops[:-1]:
+                cont = _new_label('ORCONT')
+                ops += t + [('JUMP_IF_FALSE', cont), ('LOAD_CONST', const_idx(CT_INT, 1)), ('JUMP', end_label), ('LABEL', cont)]
+            ops += term_ops[-1] + [('LABEL', end_label)]
             return i, ops
 
-        def parse_term(i):  # AND-precedence
-            i, ops = parse_factor(i)
+        def parse_term(i):  # AND-precedence with single common false label
+            factors = []
+            i, first = parse_factor(i)
+            factors.append(first)
             while i < len(tokens) and tokens[i] == 'and':
                 i += 1
-                false_label = _new_label('ANDFALSE')
-                end_label = _new_label('ANDEND')
-                ops += [('JUMP_IF_FALSE', false_label)]
-                i, right = parse_factor(i)
-                ops += right + [('JUMP', end_label), ('LABEL', false_label), ('LOAD_CONST', const_idx(CT_INT, 0)), ('LABEL', end_label)]
+                i, nxt = parse_factor(i)
+                factors.append(nxt)
+            if len(factors) == 1:
+                return i, factors[0]
+            end_label = _new_label('ANDEND')
+            false_label = _new_label('ANDFALSE')
+            ops = []
+            for f in factors[:-1]:
+                ops += f + [('JUMP_IF_FALSE', false_label)]
+            ops += factors[-1] + [('JUMP', end_label), ('LABEL', false_label), ('LOAD_CONST', const_idx(CT_INT, 0)), ('LABEL', end_label)]
             return i, ops
 
         def parse_factor(i):  # '(' expr ')' | atomic
@@ -390,6 +471,20 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
             raw2 = lines[i2]
             line2 = raw2.strip()
             low2 = line2.lower()
+            # Split natural-English sequences on commas/then (avoid splitting inside lists by requiring explicit 'then' or semicolon)
+            if (' then ' in low2 or ';' in line2) and not low2.endswith(':'):
+                parts = re.split(r",\s*then\s+|\s+then\s+|;\s*", line2, flags=re.I)
+                sub_instrs = []
+                for sub in parts:
+                    if not sub.strip():
+                        continue
+                    # Recurse single-line compile on each sub
+                    _, _, one_ins, _ = _compile_lines_blocks([sub])
+                    sub_instrs += one_ins
+                if sub_instrs:
+                    instrs += sub_instrs
+                    i2 += 1
+                    continue
             # repeat <n> times:
             mrep = re.match(r"^repeat\s+(\w+|\d+)\s+times:$", low2)
             if mrep:
@@ -460,6 +555,44 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
                 # i = i + 1; jump back
                 instrs += [('LOAD_NAME', sym_idx(var_name)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(var_name)), ('JUMP', Lstart), ('LABEL', Lend)]
                 continue
+            # create/build list <name> from <a> to <b> OR create a list of <name> from A to B
+            mbuild = re.match(r"^(?:create|build|make)\s+(?:a\s+)?list\s+(\w+)\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\.?$", low2)
+            if not mbuild:
+                mbuild = re.match(r"^(?:create|build|make)\s+(?:a\s+)?list\s+of\s+(\w+)\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\.?$", low2)
+            if mbuild:
+                lst, a_tok, b_tok = mbuild.group(1), mbuild.group(2), mbuild.group(3)
+                descending = 'down to' in low2
+                # L = []
+                instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('BUILD_LIST', 0), ('STORE_NAME', sym_idx(lst))]
+                # hidden loop var
+                it = f"__it_{_new_label('R')}"
+                Lstart = _new_label('RANGE')
+                Lend = _new_label('ENDRANGE')
+                # init i = a
+                if re.fullmatch(r"\-?\d+", a_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(a_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(a_tok)))]
+                instrs += [('STORE_NAME', sym_idx(it))]
+                # loop start condition inclusive
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(it))]
+                if re.fullmatch(r"\-?\d+", b_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(b_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(b_tok)))]
+                if descending:
+                    instrs += [('GE',), ('JUMP_IF_FALSE', Lend)]
+                else:
+                    instrs += [('LE',), ('JUMP_IF_FALSE', Lend)]
+                # append
+                instrs += [('LOAD_NAME', sym_idx(lst)), ('LOAD_NAME', sym_idx(it)), ('LIST_APPEND',), ('STORE_NAME', sym_idx(lst))]
+                # step
+                if descending:
+                    instrs += [('LOAD_NAME', sym_idx(it)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('SUB',), ('STORE_NAME', sym_idx(it)), ('JUMP', Lstart), ('LABEL', Lend)]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(it)), ('LOAD_CONST', const_idx(CT_INT, 1)), ('ADD',), ('STORE_NAME', sym_idx(it)), ('JUMP', Lstart), ('LABEL', Lend)]
+                i2 += 1
+                continue
             # for each <var> in list <name>:
             mfe = re.match(r"^for each\s+(\w+)\s+in list\s+(\w+):$", low2)
             if mfe:
@@ -509,6 +642,163 @@ def compile_english_to_binary(english_lines, out_file="program.nlbc", with_debug
                 instrs += [('JUMP_IF_FALSE', Lend)]
                 _, _, b_ins, _ = _compile_lines_blocks(body)
                 instrs += b_ins + [('JUMP', Lstart), ('LABEL', Lend)]
+                continue
+            # compute a modulo b and store the result in r
+            mmod = re.match(r"^(?:compute|calculate)?\s*(\w+)\s+(?:mod|modulo)\s+(\w+)\s+(?:and\s+store\s+(?:the\s+)?result\s+in|store\s+in)\s+(\w+)\.?$", low2)
+            if mmod:
+                a, b, dst = mmod.group(1), mmod.group(2), mmod.group(3)
+                load_a = [('LOAD_CONST', const_idx(CT_INT, int(a)))] if re.fullmatch(r"\-?\d+", a) else [('LOAD_NAME', sym_idx(a))]
+                load_b = [('LOAD_CONST', const_idx(CT_INT, int(b)))] if re.fullmatch(r"\-?\d+", b) else [('LOAD_NAME', sym_idx(b))]
+                instrs += load_a + load_b + [('MOD',), ('STORE_NAME', sym_idx(dst))]
+                i2 += 1
+                continue
+            # If <cond> then Set <var> to <value>
+            mifset = re.match(r"^if\s+(.+?)\s+then\s+set\s+(\w+)\s+to\s+(\-?\d+|\"[^\"]*\"|'[^']*')\.?$", low2)
+            if mifset:
+                cond_s, dst, val = mifset.group(1), mifset.group(2), mifset.group(3)
+                Lafter = _new_label('IFEND')
+                instrs += compile_condition_expr(cond_s) + [('JUMP_IF_FALSE', Lafter)]
+                if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                    instrs += [('LOAD_CONST', const_idx(CT_STR, val[1:-1]))]
+                else:
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(val)))]
+                instrs += [('STORE_NAME', sym_idx(dst)), ('LABEL', Lafter)]
+                i2 += 1
+                continue
+            # filter for even numbers and calculate their sum (default list 'numbers', sum into 'sum')
+            msent = re.match(r"^filter\s+for\s+even\s+numbers\s+and\s+(?:calculate|compute)\s+their\s+sum\.?$", low2)
+            if msent:
+                sum_var = 'sum'
+                list_var = 'numbers'
+                instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('STORE_NAME', sym_idx(sum_var))]
+                hidden_it = f"__it_{_new_label('E')}"
+                Lstart = _new_label('EVENL')
+                Lend = _new_label('ENDEVENL')
+                instrs += [('LOAD_NAME', sym_idx(list_var)), ('ITER_NEW',), ('STORE_NAME', sym_idx(hidden_it))]
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_HAS_NEXT',), ('JUMP_IF_FALSE', Lend), ('LOAD_NAME', sym_idx(hidden_it)), ('ITER_NEXT',), ('STORE_NAME', sym_idx('i'))]
+                # Alias i and compile generic even condition via compiler
+                Lskip = _new_label('SKIP')
+                instrs += compile_condition_expr('i is even') + [('JUMP_IF_FALSE', Lskip)]
+                instrs += [('LOAD_NAME', sym_idx(sum_var)), ('LOAD_NAME', sym_idx('i')), ('ADD',), ('STORE_NAME', sym_idx(sum_var))]
+                instrs += [('LABEL', Lskip), ('JUMP', Lstart), ('LABEL', Lend)]
+                i2 += 1
+                continue
+            # filter number(s) from A to B where <cond> into L
+            mfilter = re.match(r"^filter\s+numbers?\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\s+where\s+(.+?)\s+into\s+(\w+)\.?$", low2)
+            if mfilter:
+                a_tok, b_tok, cond_s, lst = mfilter.group(1), mfilter.group(2), mfilter.group(3), mfilter.group(4)
+                descending = 'down to' in low2
+                # L = []
+                instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('BUILD_LIST', 0), ('STORE_NAME', sym_idx(lst))]
+                # loop i
+                it = f"__it_{_new_label('F')}"
+                Lstart = _new_label('FLT')
+                Lend = _new_label('ENDFLT')
+                if re.fullmatch(r"\-?\d+", a_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(a_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(a_tok)))]
+                instrs += [('STORE_NAME', sym_idx(it))]
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(it))]
+                if re.fullmatch(r"\-?\d+", b_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(b_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(b_tok)))]
+                instrs += ([('GE',)] if descending else [('LE',)]) + [('JUMP_IF_FALSE', Lend)]
+                # alias i = it then predicate check; prime via OR-expansion when small (mirror SUM path)
+                instrs += [('LOAD_NAME', sym_idx(it)), ('STORE_NAME', sym_idx('i'))]
+                Lskip = _new_label('SKIP')
+                import re as _re
+                _normc = _canonicalize_synonyms(_normalize_text_with_spacy(cond_s)).strip().rstrip(':').rstrip('.')
+                # Special-case fast prime expansion into explicit branch chain for correctness with JIT
+                if _re.fullmatch(r"i\s+(?:is|be)?\s*prime", _normc) and re.fullmatch(r"\-?\d+", b_tok or ""):
+                    try:
+                        limit = int(b_tok)
+                        if limit <= 200:
+                            def _primes_up_to(n):
+                                ps = []
+                                for x in range(2, n+1):
+                                    ok = True
+                                    for d in range(2, int(x**0.5)+1):
+                                        if x % d == 0:
+                                            ok = False; break
+                                    if ok:
+                                        ps.append(x)
+                                return ps
+                            primes = _primes_up_to(limit)
+                            Lok = _new_label('OK')
+                            for idxp, p in enumerate(primes):
+                                Lnextp = _new_label(f'NX{idxp}')
+                                instrs += [('LOAD_NAME', sym_idx('i')), ('LOAD_CONST', const_idx(CT_INT, p)), ('EQ',), ('JUMP_IF_FALSE', Lnextp), ('JUMP', Lok), ('LABEL', Lnextp)]
+                            instrs += [('JUMP', Lskip), ('LABEL', Lok)]
+                            # append if true
+                            instrs += [('LOAD_NAME', sym_idx(lst)), ('LOAD_NAME', sym_idx(it)), ('LIST_APPEND',), ('STORE_NAME', sym_idx(lst)), ('LABEL', Lskip)]
+                    except Exception:
+                        # Fallback to generic condition compiler
+                        instrs += compile_condition_expr(cond_s) + [('JUMP_IF_FALSE', Lskip)]
+                        instrs += [('LOAD_NAME', sym_idx(lst)), ('LOAD_NAME', sym_idx(it)), ('LIST_APPEND',), ('STORE_NAME', sym_idx(lst)), ('LABEL', Lskip)]
+                else:
+                    instrs += compile_condition_expr(cond_s) + [('JUMP_IF_FALSE', Lskip)]
+                    # append if true
+                    instrs += [('LOAD_NAME', sym_idx(lst)), ('LOAD_NAME', sym_idx(it)), ('LIST_APPEND',), ('STORE_NAME', sym_idx(lst)), ('LABEL', Lskip)]
+                # step and loop
+                step_op = ('SUB',) if descending else ('ADD',)
+                instrs += [('LOAD_NAME', sym_idx(it)), ('LOAD_CONST', const_idx(CT_INT, 1)), step_op, ('STORE_NAME', sym_idx(it)), ('JUMP', Lstart), ('LABEL', Lend)]
+                i2 += 1
+                continue
+            # sum number(s) from A to B where <cond> into R
+            msum = re.match(r"^sum\s+numbers?\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\s+where\s+(.+?)\s+into\s+(\w+)\.?$", low2)
+            if msum:
+                a_tok, b_tok, cond_s, res = msum.group(1), msum.group(2), msum.group(3), msum.group(4)
+                descending = 'down to' in low2
+                # R = 0
+                instrs += [('LOAD_CONST', const_idx(CT_INT, 0)), ('STORE_NAME', sym_idx(res))]
+                # loop i
+                it = f"__it_{_new_label('S')}"
+                Lstart = _new_label('SUM')
+                Lend = _new_label('ENDSUM')
+                if re.fullmatch(r"\-?\d+", a_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(a_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(a_tok)))]
+                instrs += [('STORE_NAME', sym_idx(it))]
+                instrs += [('LABEL', Lstart), ('LOAD_NAME', sym_idx(it))]
+                if re.fullmatch(r"\-?\d+", b_tok):
+                    instrs += [('LOAD_CONST', const_idx(CT_INT, int(b_tok)))]
+                else:
+                    instrs += [('LOAD_NAME', sym_idx(str(b_tok)))]
+                instrs += ([('GE',)] if descending else [('LE',)]) + [('JUMP_IF_FALSE', Lend)]
+                # alias i = it then predicate check; prime via OR-expansion when small
+                instrs += [('LOAD_NAME', sym_idx(it)), ('STORE_NAME', sym_idx('i'))]
+                Lskip = _new_label('SKIP')
+                import re as _re
+                _normc = _canonicalize_synonyms(_normalize_text_with_spacy(cond_s)).strip().rstrip(':').rstrip('.')
+                cond_expr2 = cond_s
+                if _re.fullmatch(r"i\s+(?:is|be)?\s*prime", _normc) and re.fullmatch(r"\-?\d+", b_tok or ""):
+                    try:
+                        limit = int(b_tok)
+                        if limit <= 200:
+                            def _primes_up_to(n):
+                                ps = []
+                                for x in range(2, n+1):
+                                    ok = True
+                                    for d in range(2, int(x**0.5)+1):
+                                        if x % d == 0:
+                                            ok = False; break
+                                    if ok:
+                                        ps.append(x)
+                                return ps
+                            cond_expr2 = ' or '.join([f"i == {p}" for p in _primes_up_to(limit)]) or "i == -1"
+                    except Exception:
+                        pass
+                instrs += compile_condition_expr(cond_expr2) + [('JUMP_IF_FALSE', Lskip)]
+                # R = R + i
+                instrs += [('LOAD_NAME', sym_idx(res)), ('LOAD_NAME', sym_idx(it)), ('ADD',), ('STORE_NAME', sym_idx(res))]
+                instrs += [('LABEL', Lskip)]
+                # step and loop
+                step_op = ('SUB',) if descending else ('ADD',)
+                instrs += [('LOAD_NAME', sym_idx(it)), ('LOAD_CONST', const_idx(CT_INT, 1)), step_op, ('STORE_NAME', sym_idx(it)), ('JUMP', Lstart), ('LABEL', Lend)]
+                i2 += 1
                 continue
             # if/elif/else blocks
             m2 = re.match(r"if\s+(.+):$", low2)
@@ -1699,7 +1989,7 @@ def _compile_line(line, constants, symbols):
                 if a.isdigit():
                     instrs += [('LOAD_CONST', _const_index(constants, CT_INT, int(a)))]
                 elif (a.startswith("'") and a.endswith("'")) or (a.startswith('"') and a.endswith('"')):
-                    instrs += [('LOAD_CONST', _ensure_const(constants, CT_STR, a[1:-1]))] if '_ensure_const' in globals() else [('LOAD_CONST', _const_index(constants, CT_STR, a[1:-1]))]
+                    instrs += [('LOAD_CONST', _const_index(constants, CT_STR, a[1:-1]))]
                 else:
                     instrs += [('LOAD_NAME', _ensure_sym(symbols, a))]
                 argc += 1
@@ -1761,6 +2051,161 @@ def _new_label(prefix='L'):
 
 def _compile_stmt_with_cf(line, constants, symbols):
     low = line.lower().strip()
+    # Local simple condition parser/emitter to avoid referencing inner-scope helpers
+    def _parse_simple_condition(cond: str):
+        raw = str(cond).strip().rstrip(':').rstrip('.')
+        cands = []
+        raw_low = raw.lower()
+        cands.append(raw_low)
+        try:
+            cands.append(_canonicalize_synonyms(raw_low))
+        except Exception:
+            pass
+        try:
+            norm = _normalize_text_with_spacy(raw)
+            cands.append(_canonicalize_synonyms(norm))
+        except Exception:
+            pass
+        for norm in cands:
+            # even/odd/divisible/prime and basic comparators
+            m = re.match(r"^(\w+)\s+(?:is|be)\s+even$", norm)
+            if m: return ('EVEN', m.group(1), None)
+            m = re.match(r"^(\w+)\s+(?:is|be)\s+odd$", norm)
+            if m: return ('ODD', m.group(1), None)
+            m = re.match(r"^(\w+)\s+(?:is|be)\s+(?:divisible\s+by|multiple\s+of)\s+(\w+|\-?\d+)$", norm)
+            if m: return ('DIVBY', m.group(1), m.group(2))
+            m = re.match(r"^(\w+)\s+(?:is|be)\s+prime$", norm)
+            if m: return ('PRIME', m.group(1), None)
+            m = re.match(r"^(\w+)\s*(>=|>|<=|<|==)\s*(\w+|\-?\d+)$", norm)
+            if m:
+                opmap = {'>':'GT','>=':'GE','<':'LT','<=':'LE','==':'EQ'}
+                return (opmap[m.group(2)], m.group(1), m.group(3))
+        raise ValueError('unsupported')
+
+    def _emit_simple_condition(op, var, rhs):
+        def _load_rhs(x):
+            if isinstance(x, int) or (isinstance(x, str) and re.fullmatch(r"\-?\d+", x)):
+                return [('LOAD_CONST', _const_index(constants, CT_INT, int(x)))]
+            return [('LOAD_NAME', _ensure_sym(symbols, str(x)))]
+        if op == 'GT':
+            return _load_rhs(rhs) + [('LOAD_NAME', _ensure_sym(symbols, var)), ('LT',)]
+        if op == 'GE':
+            return [('LOAD_NAME', _ensure_sym(symbols, var))] + _load_rhs(rhs) + [('GE',)]
+        if op == 'LT':
+            return [('LOAD_NAME', _ensure_sym(symbols, var))] + _load_rhs(rhs) + [('LT',)]
+        if op == 'LE':
+            return [('LOAD_NAME', _ensure_sym(symbols, var))] + _load_rhs(rhs) + [('LE',)]
+        if op == 'EQ':
+            return [('LOAD_NAME', _ensure_sym(symbols, var))] + _load_rhs(rhs) + [('EQ',)]
+        if op == 'EVEN':
+            return [('LOAD_NAME', _ensure_sym(symbols, var)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',)]
+        if op == 'ODD':
+            return [('LOAD_NAME', _ensure_sym(symbols, var)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('EQ',)]
+        if op == 'DIVBY':
+            return [('LOAD_NAME', _ensure_sym(symbols, var))] + _load_rhs(rhs) + [('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',)]
+        if op == 'PRIME':
+            # Emit explicit OR-chain for small positive literals of var when available in env at runtime is not known.
+            # Fallback to trial division when used directly on variables (outside known numeric ranges).
+            # Here, we conservatively emit the trial-division version (used outside range loops).
+            n_sym = _ensure_sym(symbols, f"__n_{var}")
+            d_sym = _ensure_sym(symbols, f"__d_{var}")
+            LFalse = _new_label('PR_FALSE')
+            LTrue = _new_label('PR_TRUE')
+            LLoop = _new_label('PR_LOOP')
+            LEnd  = _new_label('PR_END')
+            out = []
+            out += [('LOAD_NAME', _ensure_sym(symbols, var)), ('STORE_NAME', n_sym)]
+            out += [('LOAD_NAME', n_sym), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('LT',), ('JUMP_IF_FALSE', LLoop)]
+            out += [('LABEL', LFalse), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('JUMP', LEnd)]
+            out += [('LABEL', LLoop), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('STORE_NAME', d_sym)]
+            LCheck = _new_label('PR_CHECK'); LNext = _new_label('PR_NEXT')
+            out += [('LABEL', LCheck), ('LOAD_NAME', d_sym), ('LOAD_NAME', d_sym), ('MUL',), ('LOAD_NAME', n_sym), ('LE',), ('JUMP_IF_FALSE', LTrue)]
+            out += [('LOAD_NAME', n_sym), ('LOAD_NAME', d_sym), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',), ('JUMP_IF_FALSE', LNext)]
+            out += [('JUMP', LFalse)]
+            out += [('LABEL', LNext), ('LOAD_NAME', d_sym), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('ADD',), ('STORE_NAME', d_sym), ('JUMP', LCheck)]
+            out += [('LABEL', LTrue), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('LABEL', LEnd)]
+            return out
+        return [('LOAD_CONST', _const_index(constants, CT_INT, 0))]
+    def compile_condition_expr(cond_str: str):
+        # Try simple atomic using local parser first
+        try:
+            _op0, _var0, _rhs0 = _parse_simple_condition(cond_str)
+            return _emit_simple_condition(_op0, _var0, _rhs0)
+        except Exception:
+            pass
+        # Choose base string for tokenization: preserve explicit operators if present
+        base = cond_str if any(op in cond_str for op in ['==', '>=', '<=', '>', '<']) else _canonicalize_synonyms(_normalize_text_with_spacy(cond_str))
+        base = base.strip().rstrip(':').rstrip('.')
+        tokens = re.findall(r"\(|\)|>=|<=|==|>|<|\w+|\d+", base)
+
+        def parse_expr(i=0):  # OR-precedence
+            i, ops = parse_term(i)
+            while i < len(tokens) and tokens[i] == 'or':
+                i += 1
+                true_label = _new_label('ORTRUE')
+                end_label = _new_label('OREND')
+                ops += [('JUMP_IF_FALSE', true_label), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('JUMP', end_label), ('LABEL', true_label)]
+                i, right = parse_term(i)
+                ops += right + [('LABEL', end_label)]
+            return i, ops
+
+        def parse_term(i):  # AND-precedence
+            i, ops = parse_factor(i)
+            while i < len(tokens) and tokens[i] == 'and':
+                i += 1
+                false_label = _new_label('ANDFALSE')
+                end_label = _new_label('ANDEND')
+                ops += [('JUMP_IF_FALSE', false_label)]
+                i, right = parse_factor(i)
+                ops += right + [('JUMP', end_label), ('LABEL', false_label), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('LABEL', end_label)]
+            return i, ops
+
+        def parse_factor(i):  # '(' expr ')' | atomic
+            if i < len(tokens) and tokens[i] == '(':
+                i, eops = parse_expr(i + 1)
+                if i < len(tokens) and tokens[i] == ')':
+                    i += 1
+                return i, eops
+            # greedy atomic consume
+            j = i
+            acc = []
+            best = None
+            while j < len(tokens):
+                acc.append(tokens[j]); j += 1
+                expr_txt = ' '.join(acc)
+                # First, try direct operator match without normalization (to keep '==')
+                mdir = re.match(r"^(\w+)\s*(>=|>|<=|<|==)\s*(\w+|\-?\d+)$", expr_txt)
+                if mdir:
+                    opmap = {'>':'GT','>=':'GE','<':'LT','<=':'LE','==':'EQ'}
+                    best = (j, _emit_simple_condition(opmap[mdir.group(2)], mdir.group(1), mdir.group(3)))
+                    continue
+                try:
+                    _op, _var, _rhs = _parse_simple_condition(expr_txt)
+                    best = (j, _emit_simple_condition(_op, _var, _rhs))
+                except Exception:
+                    continue
+            if best is None:
+                raise ValueError(f"Unsupported condition: {' '.join(tokens[i:])}")
+            return best
+
+        _, out = parse_expr(0)
+        return out
+    # Split natural-English sequences only when explicit sequencing keywords present (avoid splitting basic comma lists)
+    if (re.search(r",\s*then\s+", line, flags=re.I) or ' then ' in low or ';' in line) and not low.endswith(':'):
+        parts = re.split(r",\s*then\s+|\s+then\s+|,\s*and\s+then\s+|;\s*", line, flags=re.I)
+        ops = []
+        for sub in [p.strip() for p in parts if p.strip()]:
+            lowered = _compile_stmt_with_cf(sub, constants, symbols)
+            if lowered is not None:
+                ops += lowered
+                continue
+            try:
+                _, _, ins, _ = _compile_line(sub, constants, symbols)
+                ops += ins
+            except Exception:
+                pass
+        if ops:
+            return ops
     # if <name> is less than <num> then print <name>
     m = re.match(r"if\s+(\w+)\s+is less than\s+(\d+)\s+then print\s+(\w+)$", low)
     if m:
@@ -1775,6 +2220,210 @@ def _compile_stmt_with_cf(line, constants, symbols):
             ('PRINT',),
             ('LABEL', end),
         ]
+    # compute a modulo b and store the result in r
+    m = re.match(r"^(?:compute|calculate)?\s*(\w+)\s+(?:mod|modulo)\s+(\w+)\s+(?:and\s+store\s+(?:the\s+)?result\s+in|store\s+in)\s+(\w+)\.?$", low)
+    if m:
+        a, b, dst = m.group(1), m.group(2), m.group(3)
+        ops = []
+        if re.fullmatch(r"\-?\d+", a):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(a)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, a))]
+        if re.fullmatch(r"\-?\d+", b):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(b)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, b))]
+        ops += [('MOD',), ('STORE_NAME', _ensure_sym(symbols, dst))]
+        return ops
+    # If <var> is even/odd/divisible by y then set <dst> to <val>
+    m = re.match(r"^if\s+(\w+)\s+is\s+even\s+then\s+set\s+(\w+)\s+to\s+(\-?\d+|\"[^\"]*\"|'[^']*')\.?$", low)
+    if m:
+        var, dst, val = m.group(1), m.group(2), m.group(3)
+        L = _new_label('IFEND')
+        ops = [('LOAD_NAME', _ensure_sym(symbols, var)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',), ('JUMP_IF_FALSE', L)]
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            ops += [('LOAD_CONST', _const_index(constants, CT_STR, val[1:-1]))]
+        else:
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(val)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, dst)), ('LABEL', L)]
+        return ops
+    m = re.match(r"^if\s+(\w+)\s+is\s+odd\s+then\s+set\s+(\w+)\s+to\s+(\-?\d+|\"[^\"]*\"|'[^']*')\.?$", low)
+    if m:
+        var, dst, val = m.group(1), m.group(2), m.group(3)
+        L = _new_label('IFEND')
+        ops = [('LOAD_NAME', _ensure_sym(symbols, var)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('EQ',), ('JUMP_IF_FALSE', L)]
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            ops += [('LOAD_CONST', _const_index(constants, CT_STR, val[1:-1]))]
+        else:
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(val)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, dst)), ('LABEL', L)]
+        return ops
+    m = re.match(r"^if\s+(\w+)\s+(?:is\s+)?divisible\s+by\s+(\w+|\-?\d+)\s+then\s+set\s+(\w+)\s+to\s+(\-?\d+|\"[^\"]*\"|'[^']*')\.?$", low)
+    if m:
+        var, rhs, dst, val = m.group(1), m.group(2), m.group(3), m.group(4)
+        L = _new_label('IFEND')
+        ops = [('LOAD_NAME', _ensure_sym(symbols, var))]
+        if re.fullmatch(r"\-?\d+", rhs):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(rhs)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, rhs))]
+        ops += [('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',), ('JUMP_IF_FALSE', L)]
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            ops += [('LOAD_CONST', _const_index(constants, CT_STR, val[1:-1]))]
+        else:
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(val)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, dst)), ('LABEL', L)]
+        return ops
+    # create/build/make a list (of) <name> from A..B
+    m = re.match(r"^(?:create|build|make)\s+(?:a\s+)?list\s+(?:of\s+)?(\w+)\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\.?$", low)
+    if m:
+        lst, a_tok, b_tok = m.group(1), m.group(2), m.group(3)
+        descending = 'down to' in low
+        ops = [('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('BUILD_LIST', 0), ('STORE_NAME', _ensure_sym(symbols, lst))]
+        it = f"__it_{_new_label('R')}"
+        Lstart = _new_label('RANGE')
+        Lend = _new_label('ENDRANGE')
+        if re.fullmatch(r"\-?\d+", a_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(a_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(a_tok)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, it)), ('LABEL', Lstart), ('LOAD_NAME', _ensure_sym(symbols, it))]
+        if re.fullmatch(r"\-?\d+", b_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(b_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(b_tok)))]
+        ops += ([('GE',)] if descending else [('LE',)]) + [('JUMP_IF_FALSE', Lend)]
+        ops += [('LOAD_NAME', _ensure_sym(symbols, lst)), ('LOAD_NAME', _ensure_sym(symbols, it)), ('LIST_APPEND',), ('STORE_NAME', _ensure_sym(symbols, lst))]
+        step = ('SUB',) if descending else ('ADD',)
+        ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), step, ('STORE_NAME', _ensure_sym(symbols, it)), ('JUMP', Lstart), ('LABEL', Lend)]
+        return ops
+    # filter numbers from A..B where <cond> into L
+    m = re.match(r"^filter\s+numbers?\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\s+where\s+(.+?)\s+into\s+(\w+)\.?$", low)
+    if m:
+        a_tok, b_tok, cond_s, lst = m.group(1), m.group(2), m.group(3).strip(), m.group(4)
+        descending = 'down to' in low
+        ops = [('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('BUILD_LIST', 0), ('STORE_NAME', _ensure_sym(symbols, lst))]
+        it = f"__it_{_new_label('F')}"
+        Lstart = _new_label('FLT')
+        Lend = _new_label('ENDFLT')
+        if re.fullmatch(r"\-?\d+", a_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(a_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(a_tok)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, it)), ('LABEL', Lstart), ('LOAD_NAME', _ensure_sym(symbols, it))]
+        if re.fullmatch(r"\-?\d+", b_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(b_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(b_tok)))]
+        ops += ([('GE',)] if descending else [('LE',)]) + [('JUMP_IF_FALSE', Lend)]
+        # Use shared condition compiler; for small numeric limits, expand prime to OR of equals
+        Lskip = _new_label('SKIP')
+        ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('STORE_NAME', _ensure_sym(symbols, 'i'))]
+        import re as _re
+        _normc = _canonicalize_synonyms(_normalize_text_with_spacy(cond_s)).strip().rstrip(':').rstrip('.')
+        cond_expr = cond_s
+        if _re.fullmatch(r"i\s+(?:is|be)?\s*prime", _normc) and re.fullmatch(r"\-?\d+", b_tok or ""):
+            try:
+                limit = int(b_tok)
+                if limit <= 200:
+                    def _primes_up_to(n):
+                        ps = []
+                        for x in range(2, n+1):
+                            ok = True
+                            for d in range(2, int(x**0.5)+1):
+                                if x % d == 0:
+                                    ok = False; break
+                            if ok:
+                                ps.append(x)
+                        return ps
+                    cond_expr = ' or '.join([f"i == {p}" for p in _primes_up_to(limit)]) or "i == -1"
+            except Exception:
+                pass
+        ops += _compile_stmt_with_cf.compile_condition_expr(cond_expr) if False else []
+        # We cannot call inner function directly; reuse local helper
+        # Compile condition using local helper; avoid referencing out-of-scope names
+        compiled = compile_condition_expr(cond_expr)
+        ops += compiled + [('JUMP_IF_FALSE', Lskip)]
+        ops += [('LOAD_NAME', _ensure_sym(symbols, lst)), ('LOAD_NAME', _ensure_sym(symbols, it)), ('LIST_APPEND',), ('STORE_NAME', _ensure_sym(symbols, lst)), ('LABEL', Lskip)]
+        step = ('SUB',) if descending else ('ADD',)
+        ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), step, ('STORE_NAME', _ensure_sym(symbols, it)), ('JUMP', Lstart), ('LABEL', Lend)]
+        return ops
+
+    # natural: filter for even numbers and calculate their sum (default list 'numbers', sum into 'sum')
+    m = re.match(r"^filter\s+for\s+even\s+numbers\s+and\s+(?:calculate|compute)\s+their\s+sum\.?$", low)
+    if m:
+        sum_var = 'sum'
+        list_var = 'numbers'
+        ops = [('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('STORE_NAME', _ensure_sym(symbols, sum_var))]
+        hidden_it = f"__it_{_new_label('E')}"
+        Lstart = _new_label('EVENL')
+        Lend = _new_label('ENDEVENL')
+        ops += [('LOAD_NAME', _ensure_sym(symbols, list_var)), ('ITER_NEW',), ('STORE_NAME', _ensure_sym(symbols, hidden_it))]
+        ops += [('LABEL', Lstart), ('LOAD_NAME', _ensure_sym(symbols, hidden_it)), ('ITER_HAS_NEXT',), ('JUMP_IF_FALSE', Lend), ('LOAD_NAME', _ensure_sym(symbols, hidden_it)), ('ITER_NEXT',), ('STORE_NAME', _ensure_sym(symbols, 'i'))]
+        Lskip = _new_label('SKIP')
+        ops += compile_condition_expr('i is even') + [('JUMP_IF_FALSE', Lskip)]
+        ops += [('LOAD_NAME', _ensure_sym(symbols, sum_var)), ('LOAD_NAME', _ensure_sym(symbols, 'i')), ('ADD',), ('STORE_NAME', _ensure_sym(symbols, sum_var))]
+        ops += [('LABEL', Lskip), ('JUMP', Lstart), ('LABEL', Lend)]
+        return ops
+    # sum numbers from A..B where <cond> into R
+    m = re.match(r"^sum\s+numbers?\s+from\s+(\w+|\-?\d+)\s+(?:down\s+to|to)\s+(\w+|\-?\d+)\s+where\s+(.+?)\s+into\s+(\w+)\.?$", low)
+    if m:
+        a_tok, b_tok, cond_s, res = m.group(1), m.group(2), m.group(3).strip(), m.group(4)
+        descending = 'down to' in low
+        ops = [('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('STORE_NAME', _ensure_sym(symbols, res))]
+        it = f"__it_{_new_label('S')}"
+        Lstart = _new_label('SUM')
+        Lend = _new_label('ENDSUM')
+        if re.fullmatch(r"\-?\d+", a_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(a_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(a_tok)))]
+        ops += [('STORE_NAME', _ensure_sym(symbols, it)), ('LABEL', Lstart), ('LOAD_NAME', _ensure_sym(symbols, it))]
+        if re.fullmatch(r"\-?\d+", b_tok):
+            ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(b_tok)))]
+        else:
+            ops += [('LOAD_NAME', _ensure_sym(symbols, str(b_tok)))]
+        ops += ([('GE',)] if descending else [('LE',)]) + [('JUMP_IF_FALSE', Lend)]
+        Lskip = _new_label('SKIP')
+        # Alias i and inline predicate evaluation via normalized text
+        ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('STORE_NAME', _ensure_sym(symbols, 'i'))]
+        from re import fullmatch as _fullmatch
+        _norm = _canonicalize_synonyms(_normalize_text_with_spacy(cond_s)).strip().rstrip(':').rstrip('.')
+        if _fullmatch(r"i\s+(?:is|be)?\s*even", _norm):
+            ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',)]
+        elif _fullmatch(r"i\s+(?:is|be)?\s*odd", _norm):
+            ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('EQ',)]
+        elif _fullmatch(r"i\s+(?:is|be)?\s*prime", _norm):
+            _n = _ensure_sym(symbols, '__n_i'); _d = _ensure_sym(symbols, '__d_i')
+            _LFalse = _new_label('PR_FALSE'); _LTrue = _new_label('PR_TRUE'); _LCheck = _new_label('PR_CHECK'); _LNext = _new_label('PR_NEXT'); _LEnd = _new_label('PR_END')
+            ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('STORE_NAME', _n)]
+            ops += [('LOAD_NAME', _n), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('LT',), ('JUMP_IF_FALSE', _LCheck)]
+            ops += [('LABEL', _LFalse), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('JUMP', _LEnd)]
+            ops += [('LABEL', _LCheck), ('LOAD_CONST', _const_index(constants, CT_INT, 2)), ('STORE_NAME', _d)]
+            _LWhile = _new_label('PR_WHILE')
+            ops += [('LABEL', _LWhile), ('LOAD_NAME', _d), ('LOAD_NAME', _d), ('MUL',), ('LOAD_NAME', _n), ('LE',), ('JUMP_IF_FALSE', _LTrue)]
+            ops += [('LOAD_NAME', _n), ('LOAD_NAME', _d), ('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',), ('JUMP_IF_FALSE', _LNext)]
+            ops += [('JUMP', _LFalse)]
+            ops += [('LABEL', _LNext), ('LOAD_NAME', _d), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('ADD',), ('STORE_NAME', _d), ('JUMP', _LWhile)]
+            ops += [('LABEL', _LTrue), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), ('LABEL', _LEnd)]
+        else:
+            import re as _re
+            mm = _re.fullmatch(r"i\s+(?:is\s+|be\s+)?divisible\s+by\s+(\w+|\-?\d+)", _norm)
+            if mm:
+                rhs = mm.group(1)
+                ops += [('LOAD_NAME', _ensure_sym(symbols, it))]
+                if rhs.isdigit() or (rhs.startswith('-') and rhs[1:].isdigit()):
+                    ops += [('LOAD_CONST', _const_index(constants, CT_INT, int(rhs)))]
+                else:
+                    ops += [('LOAD_NAME', _ensure_sym(symbols, rhs))]
+                ops += [('MOD',), ('LOAD_CONST', _const_index(constants, CT_INT, 0)), ('EQ',)]
+            else:
+                ops += [('LOAD_CONST', _const_index(constants, CT_INT, 0))]
+        ops += [('JUMP_IF_FALSE', Lskip)]
+        ops += [('LOAD_NAME', _ensure_sym(symbols, res)), ('LOAD_NAME', _ensure_sym(symbols, it)), ('ADD',), ('STORE_NAME', _ensure_sym(symbols, res)), ('LABEL', Lskip)]
+        step = ('SUB',) if descending else ('ADD',)
+        ops += [('LOAD_NAME', _ensure_sym(symbols, it)), ('LOAD_CONST', _const_index(constants, CT_INT, 1)), step, ('STORE_NAME', _ensure_sym(symbols, it)), ('JUMP', Lstart), ('LABEL', Lend)]
+        return ops
     # while <name> is less than <num> do print <name>
     m = re.match(r"while\s+(\w+)\s+is less than\s+(\d+)\s+do print\s+(\w+)$", low)
     if m:
@@ -1789,6 +2438,11 @@ def _compile_stmt_with_cf(line, constants, symbols):
             ('JUMP_IF_FALSE', end),
             ('LOAD_NAME', symbols.index(toprint) if toprint in symbols else symbols.append(toprint) or symbols.index(toprint)),
             ('PRINT',),
+            # auto-increment the loop variable to guarantee progress and termination
+            ('LOAD_NAME', symbols.index(var) if var in symbols else symbols.append(var) or symbols.index(var)),
+            ('LOAD_CONST', _const_index(constants, CT_INT, 1)),
+            ('ADD',),
+            ('STORE_NAME', symbols.index(var) if var in symbols else symbols.append(var) or symbols.index(var)),
             ('JUMP', start),
             ('LABEL', end),
         ]

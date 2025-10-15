@@ -1,3 +1,11 @@
+## Unreleased
+
+- Compiler: Fixed filter loop condition emission to align with sum path; added robust condition compiler with correct OR handling and prime detection. Ensures prime filters like `Filter numbers from 1 to 20 where i is prime into primes` produce full results.
+- Natural-language sequence: Implemented support for "filter for even numbers and calculate their sum" with iterator-based loop.
+- VM/JIT: Guard JIT compilation to only simple loops; prevent miscompilation of boolean-heavy bodies. Added support for OP_JUMP_BACK and signed offsets in JIT runner. Exposed `EP_JIT_ENABLED`/`EP_JIT_TIER` env flags.
+- VM: Fixed while-loop sugar to increment the loop variable to avoid infinite loops and operation limit errors.
+- Lint: Removed references to out-of-scope `parse_condition`/`compile_condition` in filter path.
+
 # Changelog
 ## [1.1.0] - 2025-09-28
 ### Added

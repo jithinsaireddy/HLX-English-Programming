@@ -1,15 +1,22 @@
-from english_programming.bin.uleb128 import read_uleb128
+from english_programming.bin.uleb128 import read_uleb128, read_sleb128
 import os as _os
 
-OP_LOAD_CONST  = 0x01
-OP_LOAD_NAME   = 0x02
-OP_STORE_NAME  = 0x03
-OP_ADD         = 0x04
-OP_PRINT       = 0x05
-OP_JUMP        = 0x0A
-OP_JUMP_IF_FALSE=0x0B
-OP_RETURN      = 0x0D
-OP_LT          = 0x0E
+OP_LOAD_CONST   = 0x01
+OP_LOAD_NAME    = 0x02
+OP_STORE_NAME   = 0x03
+OP_ADD          = 0x04
+OP_PRINT        = 0x05
+OP_JUMP         = 0x0A
+OP_JUMP_IF_FALSE= 0x0B
+OP_RETURN       = 0x0D
+OP_LT           = 0x0E
+OP_LEN          = 0x13
+OP_EQ           = 0x14
+OP_LE           = 0x15
+OP_GE           = 0x16
+OP_MOD          = 0x17
+OP_LIST_APPEND  = 0xA9
+OP_JUMP_BACK    = 0xAD
 
 
 class HotLoopJIT:
@@ -17,13 +24,48 @@ class HotLoopJIT:
         self.backedge_counts = {}
         self.threshold = hot_threshold
         self.compiled_loops = {}  # key=(start,end) -> python func(env, consts, syms)
+        # Allow disabling JIT via env for correctness-sensitive scenarios
+        try:
+            self.enabled = _os.getenv('EP_JIT_ENABLED', '1') == '1'
+        except Exception:
+            self.enabled = True
         # JIT tier selection: 1 (python fusion), 2 (cffi if available), 3 (llvmlite if available)
         try:
             self.tier = int(_os.getenv('EP_JIT_TIER', '1'))
         except Exception:
             self.tier = 1
+        if self.tier <= 0:
+            self.enabled = False
+        # Lightweight profiling for hot loops
+        try:
+            self.profile_enabled = _os.getenv('EP_JIT_PROFILE', '0') == '1'
+        except Exception:
+            self.profile_enabled = False
+        self.profile = {}  # (start,end) -> {compiles,calls,time_ms}
+
+    def _wrap_profile(self, key, fn):
+        if not self.profile_enabled:
+            return fn
+        import time as _time
+        prof = self.profile.setdefault(key, {'compiles': 0, 'calls': 0, 'time_ms': 0.0})
+        # count compile once per wrap
+        prof['compiles'] += 1
+        def _runner(env, consts, syms):
+            t0 = _time.perf_counter()
+            try:
+                return fn(env, consts, syms)
+            finally:
+                dt = (_time.perf_counter() - t0) * 1000.0
+                prof['calls'] += 1
+                prof['time_ms'] += dt
+        return _runner
+
+    def get_profile(self):
+        return dict(self.profile)
 
     def maybe_count_backedge(self, src_ip: int, tgt_ip: int):
+        if not self.enabled:
+            return 0
         if tgt_ip < src_ip:
             key = (tgt_ip, src_ip)
             self.backedge_counts[key] = self.backedge_counts.get(key, 0) + 1
@@ -31,7 +73,7 @@ class HotLoopJIT:
         return 0
 
     def is_hot(self, loop_key):
-        return self.backedge_counts.get(loop_key, 0) >= self.threshold
+        return self.enabled and (self.backedge_counts.get(loop_key, 0) >= self.threshold)
 
     def compile_loop(self, code: bytes, start: int, end: int):
         # A super simple compiler for patterns: [LOAD_NAME x][LOAD_CONST c][LT][JUMP_IF_FALSE end][...body...][JUMP start]
@@ -87,8 +129,9 @@ class HotLoopJIT:
                         iv += ov
                     env[iname] = iv
                     return
-                self.compiled_loops[(start, end)] = run_native
-                return run_native
+                wrapped = self._wrap_profile((start, end), run_native)
+                self.compiled_loops[(start, end)] = wrapped
+                return wrapped
             except Exception:
                 pass
 
@@ -111,14 +154,20 @@ class HotLoopJIT:
                     res = C.loop_inc(int(iv), int(lv), int(ov))
                     env[syms[i_sym]] = int(res)
                     return
-                self.compiled_loops[(start, end)] = run_cffi
-                return run_cffi
+                wrapped = self._wrap_profile((start, end), run_cffi)
+                self.compiled_loops[(start, end)] = wrapped
+                return wrapped
             except Exception:
                 pass
         def run(env, consts, syms):
             i = start
             stack = []
-            while True:
+            # Interpret the loop segment [start, end) faithfully; stop when IP reaches end
+            # This avoids miscompilation of complex boolean logic inside loop bodies.
+            max_steps = 1000000
+            steps = 0
+            while i < end and steps < max_steps:
+                steps += 1
                 op = code[i]; i += 1
                 if op == OP_LOAD_NAME:
                     sidx, i = read_uleb128(code, i)
@@ -126,55 +175,49 @@ class HotLoopJIT:
                 elif op == OP_LOAD_CONST:
                     cidx, i = read_uleb128(code, i)
                     stack.append(consts[cidx])
+                elif op == OP_STORE_NAME:
+                    sidx, i = read_uleb128(code, i)
+                    env[syms[sidx]] = stack.pop()
+                elif op == OP_ADD:
+                    b = stack.pop(); a = stack.pop(); stack.append(a + b)
+                elif op == OP_PRINT:
+                    v = stack.pop(); print(v)
+                elif op == OP_SUB:
+                    b = stack.pop(); a = stack.pop(); stack.append(a - b)
+                elif op == OP_MUL:
+                    b = stack.pop(); a = stack.pop(); stack.append(a * b)
+                elif op == OP_MOD:
+                    b = stack.pop(); a = stack.pop(); stack.append(a % b)
                 elif op == OP_LT:
                     b = stack.pop(); a = stack.pop(); stack.append(a < b)
+                elif op == OP_LE:
+                    b = stack.pop(); a = stack.pop(); stack.append(a <= b)
+                elif op == OP_GE:
+                    b = stack.pop(); a = stack.pop(); stack.append(a >= b)
+                elif op == OP_EQ:
+                    b = stack.pop(); a = stack.pop(); stack.append(a == b)
+                elif op == OP_LIST_APPEND:
+                    val = stack.pop(); lst = stack.pop()
+                    if not isinstance(lst, list): lst = []
+                    lst.append(val); stack.append(lst)
+                elif op == OP_JUMP:
+                    off, i = read_uleb128(code, i)
+                    i += off
                 elif op == OP_JUMP_IF_FALSE:
                     off, i = read_uleb128(code, i)
                     cond = stack.pop()
                     if not cond:
-                        return
-                elif op == OP_PRINT:
-                    v = stack.pop(); print(v)
-                elif op == 0x04:  # ADD
-                    b = stack.pop(); a = stack.pop(); stack.append(a + b)
-                    # Superinstruction fusion: detect immediate STORE_NAME and commit directly
-                    if code[i] == 0x03:
-                        sidx, i = read_uleb128(code, i + 1)
-                        env[syms[sidx]] = stack.pop()
-                        continue
-                elif op == 0x03:  # STORE_NAME
-                    sidx, i = read_uleb128(code, i)
-                    name = syms[sidx]
-                    val = stack.pop()
-                    env[name] = val
-                elif op == 0x0F:  # SUB
-                    b = stack.pop(); a = stack.pop(); stack.append(a - b)
-                    if code[i] == 0x03:
-                        sidx, i = read_uleb128(code, i + 1)
-                        env[syms[sidx]] = stack.pop()
-                        continue
-                elif op == 0x10:  # MUL
-                    b = stack.pop(); a = stack.pop(); stack.append(a * b)
-                    if code[i] == 0x03:
-                        sidx, i = read_uleb128(code, i + 1)
-                        env[syms[sidx]] = stack.pop()
-                        continue
-                elif op == OP_JUMP:
-                    off, i = read_uleb128(code, i)
+                        i += off
+                elif op == OP_JUMP_BACK:
+                    off, i = read_sleb128(code, i)
                     i += off
-                    if i == start:
-                        # loop back to check
-                        continue
-                elif op == 0x0B:  # JUMP_IF_FALSE
-                    off, i = read_uleb128(code, i)
-                    cond = stack.pop()
-                    if not cond:
-                        return
                 elif op == OP_RETURN:
                     return
                 else:
-                    # unsupported in JIT, bail out
+                    # Unsupported in JIT segment, abort JIT for this loop
                     return
-        self.compiled_loops[(start, end)] = run
-        return run
+            return
+        wrapped = self._wrap_profile((start, end), run)
+        self.compiled_loops[(start, end)] = wrapped
+        return wrapped
 
