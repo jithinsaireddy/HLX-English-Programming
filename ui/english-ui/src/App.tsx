@@ -316,6 +316,10 @@ function Tutorials() {
       <p>3) Try the examples on the left in each tab. Download HLX outputs to share with friends or use on devices.</p>
       <h4>Examples</h4>
       <pre>{`Device "Room-312" at mqtt://hospital/room312\nSensor "co2_ppm" unit ppm period 500 ms\nActuator "vent_damper" actions open, close\n\nIf co2_ppm > 1200 ppm for 18 s with hysteresis 5 % and cooldown 10000 ms then\n  open vent_damper\n  publish event "co2_alert" with timestamp and value\n  store last 600000 ms of co2_ppm to table "air_quality"`}</pre>
+      <h4>EPL – Sequences (detailed)</h4>
+      <pre>{`Create a list of numbers from 1 to 20\nSet sum to 0\nFor each i in list numbers:\n  if i is divisible by 3:\n    add sum and i and store the result in sum\nPrint sum`}</pre>
+      <pre>{`Filter numbers from 2 to 30 where i is prime into primes\nSet sum to 0\nFor each i in list primes:\n  add sum and i and store the result in sum\nPrint sum`}</pre>
+      <pre>{`Create a list of numbers from 1 to 8\nSet sum to 0\nFor each i in list numbers:\n  if i is odd:\n    add sum and i and store the result in sum\nPrint sum`}</pre>
     </div>
   )
 }
@@ -397,6 +401,10 @@ function Learn(){
         <li><b>Functions</b>: “Create function add(a, b)” … “End operation”; call: “call function add with 2, 3 and store in r”.</li>
         <li><b>Classes</b>: “Define class Account …”, “Method deposit(x)” … “End method”.</li>
       </ul>
+      <h4>EPL – Sequences (detailed)</h4>
+      <pre>{`Create a list of numbers from 1 to 20\nSet sum to 0\nFor each i in list numbers:\n  if i is divisible by 3:\n    add sum and i and store the result in sum\nPrint sum`}</pre>
+      <pre>{`Filter numbers from 2 to 30 where i is prime into primes\nSet sum to 0\nFor each i in list primes:\n  add sum and i and store the result in sum\nPrint sum`}</pre>
+      <pre>{`Create a list of numbers from 1 to 8\nSet sum to 0\nFor each i in list numbers:\n  if i is odd:\n    add sum and i and store the result in sum\nPrint sum`}</pre>
     </div>
   )
 }
