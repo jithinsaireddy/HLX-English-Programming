@@ -14,12 +14,15 @@ import sys
 import os
 from typing import List, Dict, Tuple, Optional, Any
 
-# Import the base compiler
-sys.path.append('/Users/jithinpothireddy/Downloads/English Programming')
-from english_programming.src.compiler.enhanced_nl_compiler import EnhancedNLCompiler
+"""
+Import from the `compiler` package which is expected to be on sys.path.
+Both the web app and CLI add `english_programming/src` to sys.path,
+so `compiler.*` imports are the most robust across environments.
+"""
+from compiler.enhanced_nl_compiler import EnhancedNLCompiler
 
 # Import our enhanced NLP functions
-from english_programming.src.compiler.enhanced_nlp_functions import (
+from compiler.enhanced_nlp_functions import (
     enhanced_analyze_with_nlp,
     process_arithmetic_operation,
     process_string_concatenation,
@@ -29,7 +32,7 @@ from english_programming.src.compiler.enhanced_nlp_functions import (
     handle_string_concatenation,
     handle_arithmetic_operations
 )
-from english_programming.src.compiler.ir import IRInstruction, IRProgram
+from compiler.ir import IRInstruction, IRProgram
 
 class ImprovedNLPCompiler(EnhancedNLCompiler):
     """
@@ -770,7 +773,7 @@ class ImprovedNLPCompiler(EnhancedNLCompiler):
         ir = IRProgram(instructions=[IRInstruction.from_bytecode(b) for b in bytecode])
         try:
             # Apply simple optimizations
-            from english_programming.src.compiler.optimizer import optimize_ir
+            from compiler.optimizer import optimize_ir
             ir = optimize_ir(ir)
             bytecode = [f"{ins.op} {' '.join(ins.args)}".strip() for ins in ir.instructions]
         except Exception:

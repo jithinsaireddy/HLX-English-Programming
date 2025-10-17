@@ -121,8 +121,11 @@ def main():
     if not args.text:
         from english_programming.bin.nlvm_bin import parse_module, run_module
         buf = open(nlb_out, 'rb').read()
-        _, _, _, consts, syms, code, funcs = parse_module(buf)
-        run_module(consts, syms, code, funcs)
+        ver_major, ver_minor, flags, consts, syms, code, funcs, classes = parse_module(buf)
+        env = run_module(consts, syms, code, funcs, classes)
+        # Auto-display inferred result if available
+        if isinstance(env, dict) and '_result' in env:
+            print("Result:", env.get('_result'))
     else:
         vm.execute(output_file)
     print("------------------------")

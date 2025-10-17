@@ -919,6 +919,33 @@ def run_module(consts, syms, main_code, funcs, classes=None):
     env['_call'] = call
     env['_classes'] = class_map
     run_code(consts, syms, main_code, env, func_map)
+    # Infer a likely result for consumers outside UI (no explicit prints required)
+    try:
+        inferred_result = None
+        candidate_names = [
+            'result', 'sum', 'output', 'answer', 'value',
+            'res', 'retval', 'total', 'count', 'final', 'final_result'
+        ]
+        for name in candidate_names:
+            if name in env and not name.startswith('_'):
+                inferred_result = env.get(name)
+                break
+        if inferred_result is None:
+            numeric_items = [
+                (k, v) for k, v in env.items()
+                if not k.startswith('_') and isinstance(v, (int, float))
+            ]
+            if len(numeric_items) == 1:
+                inferred_result = numeric_items[0][1]
+        if inferred_result is None:
+            traces = env.get('_traces', [])
+            prints = [rest[0] for (op, *rest) in traces if op == 'PRINT' and rest]
+            if prints:
+                inferred_result = prints[-1]
+        env['_result'] = inferred_result
+    except Exception:
+        # Never fail inference; leave _result unset
+        pass
     # Filter return: keep internal '_' keys; for user keys, drop class instances (dicts with '__class__')
     def _is_instance(x):
         return isinstance(x, dict) and ('__class__' in x)

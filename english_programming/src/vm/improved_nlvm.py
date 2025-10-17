@@ -33,7 +33,11 @@ from urllib.error import URLError, HTTPError
 import json
 import datetime
 import re as _re
-from english_programming.src.pm.package_manager import PackageManager
+# Import PackageManager from pm package available on sys.path (english_programming/src)
+try:
+    from pm.package_manager import PackageManager
+except Exception:
+    PackageManager = None
 
 class ImprovedNLVM:
     """
@@ -90,7 +94,7 @@ class ImprovedNLVM:
         self.current_class = None
         # Package manager
         try:
-            self.pm = PackageManager()
+            self.pm = PackageManager() if PackageManager else None
         except Exception:
             self.pm = None
     
