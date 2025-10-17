@@ -15,24 +15,62 @@ import os
 from typing import List, Dict, Tuple, Optional, Any
 
 """
-Import from the `compiler` package which is expected to be on sys.path.
-Both the web app and CLI add `english_programming/src` to sys.path,
-so `compiler.*` imports are the most robust across environments.
+Imports are resolved robustly across environments (package, src-only, repo root):
+1) Prefer package-relative imports (when loaded as english_programming.src.compiler)
+2) Fallback to 'compiler.*' when english_programming/src is on sys.path
+3) Fallback to absolute 'english_programming.src.compiler.*' as last resort
 """
-from compiler.enhanced_nl_compiler import EnhancedNLCompiler
+try:
+    from .enhanced_nl_compiler import EnhancedNLCompiler
+except Exception:
+    try:
+        from compiler.enhanced_nl_compiler import EnhancedNLCompiler
+    except Exception:
+        from english_programming.src.compiler.enhanced_nl_compiler import EnhancedNLCompiler
 
 # Import our enhanced NLP functions
-from compiler.enhanced_nlp_functions import (
-    enhanced_analyze_with_nlp,
-    process_arithmetic_operation,
-    process_string_concatenation,
-    handle_counter_operations,
-    handle_print_statements,
-    handle_conditional_statements,
-    handle_string_concatenation,
-    handle_arithmetic_operations
-)
-from compiler.ir import IRInstruction, IRProgram
+try:
+    from .enhanced_nlp_functions import (
+        enhanced_analyze_with_nlp,
+        process_arithmetic_operation,
+        process_string_concatenation,
+        handle_counter_operations,
+        handle_print_statements,
+        handle_conditional_statements,
+        handle_string_concatenation,
+        handle_arithmetic_operations
+    )
+except Exception:
+    try:
+        from compiler.enhanced_nlp_functions import (
+            enhanced_analyze_with_nlp,
+            process_arithmetic_operation,
+            process_string_concatenation,
+            handle_counter_operations,
+            handle_print_statements,
+            handle_conditional_statements,
+            handle_string_concatenation,
+            handle_arithmetic_operations
+        )
+    except Exception:
+        from english_programming.src.compiler.enhanced_nlp_functions import (
+            enhanced_analyze_with_nlp,
+            process_arithmetic_operation,
+            process_string_concatenation,
+            handle_counter_operations,
+            handle_print_statements,
+            handle_conditional_statements,
+            handle_string_concatenation,
+            handle_arithmetic_operations
+        )
+
+try:
+    from .ir import IRInstruction, IRProgram
+except Exception:
+    try:
+        from compiler.ir import IRInstruction, IRProgram
+    except Exception:
+        from english_programming.src.compiler.ir import IRInstruction, IRProgram
 
 class ImprovedNLPCompiler(EnhancedNLCompiler):
     """
@@ -773,7 +811,13 @@ class ImprovedNLPCompiler(EnhancedNLCompiler):
         ir = IRProgram(instructions=[IRInstruction.from_bytecode(b) for b in bytecode])
         try:
             # Apply simple optimizations
-            from compiler.optimizer import optimize_ir
+            try:
+                from .optimizer import optimize_ir
+            except Exception:
+                try:
+                    from compiler.optimizer import optimize_ir
+                except Exception:
+                    from english_programming.src.compiler.optimizer import optimize_ir
             ir = optimize_ir(ir)
             bytecode = [f"{ins.op} {' '.join(ins.args)}".strip() for ins in ir.instructions]
         except Exception:
