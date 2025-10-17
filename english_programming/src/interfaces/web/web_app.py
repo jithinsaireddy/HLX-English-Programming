@@ -352,6 +352,30 @@ def epl_exec():
             traces = env.get('_traces', [])
             output = [_jsonable(v) for (op, *rest) in traces for v in ([rest[0]] if op == 'PRINT' and rest else [])]
             user_env = {k: _jsonable(v) for k, v in env.items() if not k.startswith('_')}
+            # Infer a likely result when users don't write explicit prints
+            inferred_result = None
+            try:
+                candidate_names = [
+                    'result', 'sum', 'output', 'answer', 'value',
+                    'res', 'retval', 'total', 'count', 'final', 'final_result'
+                ]
+                for name in candidate_names:
+                    if name in user_env:
+                        inferred_result = user_env.get(name)
+                        break
+                if inferred_result is None:
+                    # Prefer a single numeric variable if there is exactly one
+                    numeric_items = [
+                        (k, v) for k, v in user_env.items()
+                        if isinstance(v, (int, float))
+                    ]
+                    if len(numeric_items) == 1:
+                        inferred_result = numeric_items[0][1]
+                if inferred_result is None and output:
+                    # Fall back to first printed value if available
+                    inferred_result = output[-1]
+            except Exception:
+                inferred_result = None
             hints = env.get('_hints', [])
             # Update server-side telemetry based on hints
             try:
@@ -371,6 +395,7 @@ def epl_exec():
             except Exception:
                 pass
             return {"ok": True, "text_ir": text_ir, "disasm": disasm, "output": output, "env": user_env, "hints": hints,
+                    "result": _jsonable(inferred_result),
                     "version": {"major": ver_major, "minor": ver_minor}}
         finally:
             try:

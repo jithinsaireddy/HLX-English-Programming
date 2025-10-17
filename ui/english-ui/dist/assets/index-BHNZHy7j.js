@@ -437,7 +437,8 @@ print bal`}],a=async()=>{const c=await fetch(be+"/epl/exec",{method:"POST",heade
 `),`--- NLBC Disassembly ---
 `+(f.disasm||""),`--- Output (PRINT) ---
 `+(f.output||[]).join(`
-`),`--- Variables ---
+`),`--- Result ---
+`+(f.result!==void 0&&f.result!==null?JSON.stringify(f.result):""),`--- Variables ---
 `+JSON.stringify(f.env||{},null,2),`--- Hints ---
 `+(f.hints||[]).join(`
 `)];i(d.join(`

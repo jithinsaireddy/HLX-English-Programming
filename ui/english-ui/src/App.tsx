@@ -263,6 +263,7 @@ print bal`}
       '--- Text IR ---\n'+(j.text_ir||[]).join('\n'),
       '--- NLBC Disassembly ---\n'+(j.disasm||''),
       '--- Output (PRINT) ---\n'+(j.output||[]).join('\n'),
+      '--- Result ---\n'+(j.result !== undefined && j.result !== null ? JSON.stringify(j.result) : ''),
       '--- Variables ---\n'+JSON.stringify(j.env||{}, null, 2),
       '--- Hints ---\n'+(j.hints||[]).join('\n')
     ]
